@@ -1,0 +1,59 @@
+---
+version: '3.3'
+
+services:
+  # mariadb 10.6.5 container
+  # Doc: https://hub.docker.com/_/mariadb
+  monapp-mariadb:
+    container_name: monapp-mariadb
+    hostname: monapp-mariadb
+    image: 'mariadb:10.6.5'
+    volumes:
+      - 'monapp_mariadb:/var/lib/mariadb'
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=monapp
+    ports:
+      - '3306:3306'
+
+  # PHPMyAdmin : PHPMyAdmin pour voir le contenu de la base
+  # Accessible en faisant un tunnel SSH:
+  # ssh -L 1234:localhost:8080 root@ippubliquedevotreVM
+  # puis pointer le browser sur http://localhost:1234
+  monapp-phpmyadmin:
+    container_name: monapp-phpmyadmin
+    hostname: monapp-phpmyadmin
+    image: phpmyadmin/phpmyadmin
+    restart: unless-stopped
+    environment:
+      - PMA_HOST=monapp-mariadb
+    ports:
+      - '8080:80'
+    depends_on:
+      - monapp-mariadb
+
+  # Client Python 2 très simple qui sert le contenu de la base
+  monapp-client:
+    container_name: monapp-client
+    hostname: monapp-client
+    image: 'monapp-client:latest'
+    build:
+      context: ./client/
+      dockerfile: docker/Dockerfile
+    # Exercice 2 ajouter ça pour faire du dev en local
+    volumes:
+      - './client/:/srv/monapp:rw,cached'
+    restart: unless-stopped
+    environment:
+      - MYSQL_HOST=monapp-mariadb
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=root
+      - MYSQL_DB=mysql
+    ports:
+      - '80:8000'
+    depends_on:
+      - monapp-mariadb
+
+volumes:
+  monapp_mariadb:  # Persist mariadb datas
