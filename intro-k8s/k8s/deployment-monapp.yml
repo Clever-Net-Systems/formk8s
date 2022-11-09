@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: deploy-monapp-helloworld
+  namespace: <###namespace###>
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: monapp-helloworld
+      tier: frontend
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+     maxUnavailable: 25%
+
+  template:
+    metadata:
+      labels:
+        app: monapp-helloworld
+        tier: frontend
+
+    spec:
+
+      imagePullSecrets:
+      - name: secret-tempvdgreg
+
+      priorityClassName: business-app-critical
+
+      containers:
+      - image: env-9264065.sh1.hidora.com/<###image###>
+        imagePullPolicy: IfNotPresent
+        name: monapp-helloworld
+
+        envFrom:
+          - configMapRef:
+              name: configmap-monapp
+
+        ports:
+        - containerPort: 8000
+
+        startupProbe:
+          tcpSocket:
+            port: 8000
+          failureThreshold: 12
+          periodSeconds: 10
+
+        livenessProbe:
+          tcpSocket:
+            port: 8000
+          periodSeconds: 60
+          failureThreshold: 1
+          initialDelaySeconds: 0
+
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          periodSeconds: 10
+          failureThreshold: 3
+          initialDelaySeconds: 0
+          timeoutSeconds: 5
+
+        resources:
+          requests:
+            memory: "16M"
+            cpu: "50m"
+            ephemeral-storage: "512M"
+          limits:
+            memory: "128M"
+            cpu: "500m"
+            ephemeral-storage: "512M"
+
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: monapp-helloworld
+              tier: frontend
