@@ -14,6 +14,7 @@ services:
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_DATABASE=monapp
+    #env_file: .env # Autre façon de spécifier des variables d'environnement
     ports:
       - '3306:3306'
 

@@ -1,8 +1,9 @@
 FROM centos:7
 
-ENV MYSQL_HOST=undefined
+ARG MYSQL_HOST_ARG=undefined
+ENV MYSQL_HOST=$MYSQL_HOST_ARG
 
-# TODO WORKDIR et USER
+# TODO USER
 RUN yum install -y epel-release && \
     yum install -y mysql-connector-python.noarch
 
