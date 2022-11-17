@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: configmap-monapp
+  namespace: {{ .Release.Namespace }}
+data:
+  PRENOM: "{{ required ".Values.prenom entry is required!" .Values.prenom }}"
