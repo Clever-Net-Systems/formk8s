@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: pod-myapp2
-  namespace: antoine-test
+  namespace: <prenom>-test2
   labels:
     app: MyApp
     tier: frontend

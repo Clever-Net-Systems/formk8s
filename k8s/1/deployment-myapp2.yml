@@ -28,6 +28,16 @@ spec:
       - name: myapp-container
         image: nginxdemos/hello:latest
 
+        resources:
+          requests:
+            memory: "16M"
+            cpu: "50m"
+            ephemeral-storage: "512M"
+          limits:
+            memory: "128M"
+            cpu: "500m"
+            ephemeral-storage: "512M"
+
       initContainers:
       - name: init-myservice
         image: busybox:1.28

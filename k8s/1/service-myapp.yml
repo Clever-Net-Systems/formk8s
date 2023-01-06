@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: service-myapp
-  namespace: antoine-test
+  namespace: <prenom>-test2
 spec:
   type: ClusterIP
   ports:
