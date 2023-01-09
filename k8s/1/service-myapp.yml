@@ -4,7 +4,7 @@ metadata:
   name: service-myapp
   namespace: <prenom>-test2
 spec:
-  type: ClusterIP
+  type: NodePort
   ports:
     - protocol: TCP
       port: 80
