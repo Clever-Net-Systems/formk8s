@@ -26,7 +26,7 @@ spec:
     spec:
       containers:
       - name: myapp-container
-        image: nginxdemos/hello:latest
+        image: nginxdemos/hello:0.3-plain-text
 
         resources:
           requests:
