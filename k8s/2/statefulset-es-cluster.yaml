@@ -1,0 +1,111 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: statefulset-es-cluster
+  namespace: estest
+  labels:
+    app: kube-logging
+    tier: elasticsearch
+spec:
+  serviceName: service-elasticsearch
+  replicas: 3
+  selector:
+    matchLabels:
+      app: kube-logging
+      tier: elasticsearch
+  template:
+    metadata:
+      labels:
+        app: kube-logging
+        tier: elasticsearch
+    spec:
+      containers:
+      - name: elasticsearch
+        image: docker.elastic.co/elasticsearch/elasticsearch:7.17.5
+        imagePullPolicy: IfNotPresent
+
+        ports:
+        - containerPort: 9200
+          name: rest
+          protocol: TCP
+        - containerPort: 9300
+          name: inter-node
+          protocol: TCP
+
+        volumeMounts:
+        - name: data
+          mountPath: /usr/share/elasticsearch/data
+
+        envFrom:
+          - configMapRef:
+              name: configmap-elasticsearch
+        env:
+          - name: node.name
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+
+        resources:
+            requests:
+              cpu: 100m
+              memory: 850Mi
+              ephemeral-storage: 128M
+            limits:
+              cpu: 1000m
+              memory: 1250Mi
+              ephemeral-storage: 512M
+
+        #No readiness probe : The node has to be immediatly resolvable
+        #No startup probe : The node has to be immediatly resolvable
+        livenessProbe:
+          tcpSocket:
+            port: 9200
+          periodSeconds: 10
+          failureThreshold: 3
+          initialDelaySeconds: 30
+          timeoutSeconds: 5
+
+      initContainers:
+      - name: fix-permissions
+        image: busybox
+        imagePullPolicy: IfNotPresent
+        command: ["sh", "-c", "chown -R 1000:1000 /usr/share/elasticsearch/data"]
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: data
+          mountPath: /usr/share/elasticsearch/data
+      - name: increase-vm-max-map
+        image: busybox
+        imagePullPolicy: IfNotPresent
+        command: ["sysctl", "-w", "vm.max_map_count=262144"]
+        securityContext:
+          privileged: true
+      - name: increase-fd-ulimit
+        image: busybox
+        imagePullPolicy: IfNotPresent
+        command: ["sh", "-c", "ulimit -n 65536"]
+        securityContext:
+          privileged: true
+
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: kube-logging
+              tier: elasticsearch
+
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+      labels:
+        app: kube-logging
+        tier: elasticsearch
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: longhorn
+      resources:
+        requests:
+          storage: 1Gi
