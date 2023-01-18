@@ -27,6 +27,17 @@ spec:
       containers:
       - name: myapp-container
         image: nginxdemos/hello:latest
+
+        resources:
+          requests:
+            memory: "16M"
+            cpu: "50m"
+            ephemeral-storage: "512M"
+          limits:
+            memory: "128M"
+            cpu: "500m"
+            ephemeral-storage: "512M"
+
         startupProbe:
           tcpSocket:
             port: 80
@@ -48,16 +59,6 @@ spec:
           failureThreshold: 3
           initialDelaySeconds: 0
           timeoutSeconds: 5
-
-        resources:
-          requests:
-            memory: "16M"
-            cpu: "50m"
-            ephemeral-storage: "512M"
-          limits:
-            memory: "128M"
-            cpu: "500m"
-            ephemeral-storage: "512M"
 
       initContainers:
       - name: init-myservice
