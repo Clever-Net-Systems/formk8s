@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: add-sshkey
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "helm-ssh-workers.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      name: add-sshkey
+  template:
+    metadata:
+      name: add-sshkey
+      labels:
+        name: add-sshkey
+        {{- include "helm-ssh-workers.labels" . | nindent 8 }}
+    spec:
+      priorityClassName: {{ required ".Values.priorityClass.name entry is required!" .Values.priorityClass.name }}
+      volumes:
+      - name: root-mount
+        hostPath:
+          path: /
+      containers:
+        - image: ubuntu:22.04
+          env:
+          - name: ROOT_MOUNT_DIR
+            value: /root
+          volumeMounts:
+          - name: root-mount
+            mountPath: /root
+          command:
+            - sh
+            - "-c"
+            - |
+              /usr/bin/bash <<'EOF'
+
+              ROOT_MOUNT_DIR="${ROOT_MOUNT_DIR:-/root}"
+
+              echo "Adding SSH Key"
+
+              # mounted in /root/root
+              # ------- INSERT YOUR SSH KEY HERE INTO /root/root/.ssh/authorized_keys
+              cat /dev/null > /root/root/.ssh/authorized_keys
+              {{- range .Values.keys }}
+              echo {{ . | quote }} >> /root/root/.ssh/authorized_keys
+              {{- end }}
+
+              echo "Finished"
+              while true; do sleep 60; done
+
+              EOF
+          imagePullPolicy: IfNotPresent
+          name: ubuntu
+          securityContext:
+            privileged: true
+            capabilities:
+              add:
+                - ALL
+      restartPolicy: Always

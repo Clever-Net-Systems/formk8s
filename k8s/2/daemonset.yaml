@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: daemonset-qui-sert-a-rien
+  namespace: estest
+spec:
+  selector:
+    matchLabels:
+      name: daemonset-qui-sert-a-rien
+  template:
+    metadata:
+      labels:
+        name: daemonset-qui-sert-a-rien
+    spec:
+      hostPID: true # allows a pod to have access to the host process ID namespace
+      initContainers:
+      - name: init-node
+        command: ["nsenter"]
+        args: ["--mount=/proc/1/ns/mnt", "--", "sh", "-c", "echo coucou >> /etc/coucou-<prenom>"]
+        image: debian
+        securityContext:
+          privileged: true
+      containers:
+      - name: wait
+        image: k8s.gcr.io/pause:3.1
