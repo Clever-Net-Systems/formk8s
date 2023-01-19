@@ -9,7 +9,7 @@ image:
   frontendrepository: nginxdemos/hello
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  apitag: 28
+  apitag: 2842
   frontendtag: latest
 
 imagePullSecrets: []
