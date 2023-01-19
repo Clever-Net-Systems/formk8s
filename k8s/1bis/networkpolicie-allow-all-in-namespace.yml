@@ -1,0 +1,14 @@
+# Authorize all pods to pods ingress traffic in the current namespace
+# So all traffic from pods in other namespaces is denied because not explicitly allowed
+# (https://github.com/ahmetb/kubernetes-network-policy-recipes/blob/master/04-deny-traffic-from-other-namespaces.md)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  namespace: <prenom>-test3 # The spec podSelector below apply only to this namespace
+  name: allow-all-in-namespace
+spec:
+  podSelector:
+    matchLabels: # it applies the policy to ALL pods in the namespace as the spec.podSelector.matchLabels is empty and therefore selects all pods.
+  ingress:
+  - from:
+    - podSelector: {} # it allows traffic from ALL pods in the namespace, as spec.ingress.from.podSelector is empty and therefore selects all pods.

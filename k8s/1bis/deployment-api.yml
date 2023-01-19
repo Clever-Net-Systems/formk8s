@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment-api
+  namespace: <prenom>-test3
+
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: monapp
+      tier: api
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+     maxUnavailable: 50%
+
+  template:
+    metadata:
+      labels:
+        app: monapp
+        tier: api
+
+    spec:
+      containers:
+      - name: monapp-api
+        image: mendhak/http-https-echo:28
+
+        resources:
+          requests:
+            memory: "16M"
+            cpu: "50m"
+            ephemeral-storage: "512M"
+          limits:
+            memory: "128M"
+            cpu: "200m"
+            ephemeral-storage: "512M"
+
+        startupProbe:
+          tcpSocket:
+            port: 8080
+          failureThreshold: 12
+          periodSeconds: 10
+
+        livenessProbe:
+          httpGet:
+            path: /healthy
+            port: 8080
+          periodSeconds: 30
+          failureThreshold: 3
+          initialDelaySeconds: 0
+
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          periodSeconds: 10
+          failureThreshold: 3
+          initialDelaySeconds: 0
+          timeoutSeconds: 5

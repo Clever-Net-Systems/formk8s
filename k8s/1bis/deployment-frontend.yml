@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment-frontend
+  namespace: <prenom>-test3
+
+spec:
+  replicas: 4
+
+  selector:
+    matchLabels:
+      app: monapp
+      tier: frontend
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+     maxUnavailable: 50%
+
+  template:
+    metadata:
+      labels:
+        app: monapp
+        tier: frontend
+
+    spec:
+      containers:
+      - name: monapp-frontend
+        image: nginxdemos/hello:latest
+
+        resources:
+          requests:
+            memory: "16M"
+            cpu: "50m"
+            ephemeral-storage: "512M"
+          limits:
+            memory: "64M"
+            cpu: "100m"
+            ephemeral-storage: "512M"
+
+        startupProbe:
+          tcpSocket:
+            port: 80
+          failureThreshold: 12
+          periodSeconds: 10
+
+        livenessProbe:
+          tcpSocket:
+            port: 80
+          periodSeconds: 60
+          failureThreshold: 1
+          initialDelaySeconds: 0
+
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          periodSeconds: 10
+          failureThreshold: 3
+          initialDelaySeconds: 0
+          timeoutSeconds: 5
+
+      - name: my-sidecar-pod
+        image: busybox:1.28
+        command: ['sh', '-c', 'while true; do echo "Hello from the sidecar container" && sleep 3 ; done']
+        
+        resources:
+          requests:
+            memory: "8M"
+            cpu: "50m"
+            ephemeral-storage: "16M"
+          limits:
+            memory: "16M"
+            cpu: "100m"
+            ephemeral-storage: "16M"

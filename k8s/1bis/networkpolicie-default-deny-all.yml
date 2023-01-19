@@ -1,0 +1,11 @@
+# Default deny all ingress traffic rule
+# Egress traffic is allowed (By default, a pod is non-isolated for egress)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  namespace: <prenom>-test3 # The spec podSelector below apply only to this namespace
+  name: default-deny-all
+spec:
+  podSelector: {} # All pods in the namespace
+  policyTypes:
+  - Ingress
