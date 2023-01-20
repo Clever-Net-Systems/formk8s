@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: statefulset-es-cluster
-  namespace: estest
+  namespace: estest-<prenom>
   labels:
     app: kube-logging
     tier: elasticsearch

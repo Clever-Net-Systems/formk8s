@@ -2,7 +2,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: service-elasticsearch
-  namespace: estest
+  namespace: estest-<prenom>
   labels:
     app: kube-logging
     tier: elasticsearch

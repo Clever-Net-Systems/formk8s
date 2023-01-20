@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: configmap-elasticsearch
-  namespace: estest
+  namespace: estest-<prenom>
   labels:
     app: kube-logging
     tier: elasticsearch
