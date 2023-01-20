@@ -1,0 +1,23 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job-mysql-migration
+  namespace: <prenom>-test3
+spec:
+  template:
+    spec:
+      containers:
+      - name: mysql-migration
+        image: mariadb:10.6
+        command: ["/bin/sh", "-c"]
+        args:
+          - echo "Updating database....";
+            mysql --version;
+            sleep 10;
+            echo "Database successfuly updated !"
+      restartPolicy: Never
+  backoffLimit: 0
+  completions: 1
+  parallelism: 1
+  activeDeadlineSeconds: 60
+  ttlSecondsAfterFinished: 180

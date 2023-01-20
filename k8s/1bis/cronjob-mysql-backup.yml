@@ -1,0 +1,24 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cronjob-mysql-backup
+  namespace: <prenom>-test3
+spec:
+  schedule: "*/1 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit : 3
+  failedJobsHistoryLimit : 10
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: mysql-backup
+            image: mariadb:10.6
+            command: ["/bin/sh", "-c"]
+            args:
+              - echo "Backuping database....";
+                mysqldump --version;
+                sleep 10;
+                echo "Database successfuly backuped !"
+          restartPolicy: Never
