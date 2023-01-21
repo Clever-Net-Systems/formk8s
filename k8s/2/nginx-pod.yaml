@@ -8,5 +8,3 @@ spec:
       name: nginx
       ports:
         - containerPort: 80
-      securityContext:
-        privileged: true

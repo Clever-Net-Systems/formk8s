@@ -1,0 +1,13 @@
+# Cluster Role lsns
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: clusterrolebinding-lsns-operateur
+subjects:
+- kind: ServiceAccount
+  name: operateur
+  namespace: estest-<prenom>
+roleRef:
+  kind: ClusterRole
+  name: clusterrole-lsns-<prenom>
+  apiGroup: rbac.authorization.k8s.io
