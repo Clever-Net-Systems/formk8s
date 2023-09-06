@@ -16,7 +16,7 @@ spec:
 
     - name: my-sidecar-pod
       image: busybox:1.28
-      command: ['sh', '-c', 'while true; do echo "Hello from the sidecar container" > /pod-data/index.html && sleep 3 ; done']
+      command: ['sh', '-c', 'while true; do echo "Hello from the sidecar container" >> /pod-data/index.html && sleep 3 ; done']
       volumeMounts:
       - name: shared-data
         mountPath: /pod-data
