@@ -13,9 +13,7 @@ spec:
       tier: api
 
   strategy:
-    type: RollingUpdate
-    rollingUpdate:
-     maxUnavailable: 50%
+    type: Recreate
 
   template:
     metadata:
