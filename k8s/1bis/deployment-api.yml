@@ -26,6 +26,7 @@ spec:
       containers:
       - name: monapp-api
         image: mendhak/http-https-echo:28
+        imagePullPolicy: IfNotPresent
 
         resources:
           requests:
