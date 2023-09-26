@@ -2,11 +2,12 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: app-consuming-pvc
+  namespace: <prenom>-test3
 spec:
   volumes:
     - name: app-storage
       persistentVolumeClaim:
-        claimName: pvc-testrestore
+        claimName: staticpvc
   containers:
   - image: alpine
     name: app
