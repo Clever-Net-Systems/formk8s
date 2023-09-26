@@ -1,6 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: apiconfigmap
+  name: configmap-api
+  namespace: <prenom>-test3
 data:
   APPVERSION: "42"
