@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: daemonset-qui-sert-a-rien
-  namespace: estest-<prenom>
+  namespace: <prenom>-test3
 spec:
   selector:
     matchLabels:
