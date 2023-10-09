@@ -6,7 +6,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: operateur
-  namespace: estest-<prenom>
+  namespace: sectest-<prenom>
 roleRef:
   kind: ClusterRole
   name: clusterrole-lsns-<prenom>

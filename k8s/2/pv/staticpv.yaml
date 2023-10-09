@@ -9,4 +9,4 @@ spec:
   accessModes:
     - ReadWriteOnce
   hostPath:
-    path: /data/staticpv-antoine
+    path: /data/staticpv-<prenom>

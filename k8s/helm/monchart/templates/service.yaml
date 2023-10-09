@@ -5,9 +5,9 @@ metadata:
   labels:
     {{- include "monchart.labels" . | nindent 4 }}
 spec:
-  type: {{ .Values.apiservice.type }}
+  type: {{ .Values.service.type }}
   ports:
-    - port: {{ .Values.apiservice.port }}
+    - port: {{ .Values.service.port }}
       targetPort: http
       protocol: TCP
       name: http
