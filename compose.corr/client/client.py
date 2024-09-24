@@ -28,7 +28,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             for user in myresult:
                 for index, column in enumerate(user):
                     # Afficher le type de chaque colonne
-                    self.wfile.write(f"Colonne {index}: {str(column)}\n".encode('utf-8'))
+                    self.wfile.write(f"Colonne coucou {index}: {str(column)}\n".encode('utf-8'))
 
         except mysql.connector.Error as err:
             # Gérer les erreurs de connexion ou de requête
@@ -41,6 +41,6 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
                 mydb.close()
 
 # Démarrer le serveur HTTP
-httpd = HTTPServer(('', 8000), SimpleHTTPRequestHandler)
+httpd = HTTPServer(('', int(os.getenv('PORT', 8000))), SimpleHTTPRequestHandler)
 httpd.serve_forever()
 

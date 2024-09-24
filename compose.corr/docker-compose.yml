@@ -4,6 +4,8 @@ services:
     container_name: monapp-mariadb
     hostname: monapp-mariadb
     image: 'mariadb:10.6.5'
+    volumes:
+      - 'monapp_mariadb:/var/lib/mariadb'
     restart: unless-stopped
     environment:
       - MYSQL_ROOT_PASSWORD=root
@@ -35,14 +37,21 @@ services:
     build:
       context: ./client/
       dockerfile: docker/Dockerfile
+    # Exercice ajouter ça pour faire du dev en local
+    volumes:
+      - './client/:/srv/monapp:rw,cached'
     restart: unless-stopped
     environment:
       - MYSQL_HOST=monapp-mariadb
       - MYSQL_USER=root
       - MYSQL_PASSWORD=root
       - MYSQL_DB=mysql
+      - PORT=8000
     ports:
       - '80:8000'
     depends_on:
       - monapp-mariadb
 
+
+volumes:
+  monapp_mariadb:  # Persist mariadb datas
