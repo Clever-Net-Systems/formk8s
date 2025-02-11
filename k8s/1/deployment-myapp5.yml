@@ -24,9 +24,25 @@ spec:
         tier: frontend
 
     spec:
+
+      volumes:
+        - name: volume-myapp
+          persistentVolumeClaim:
+            claimName: pvc-myapp
+
       containers:
       - name: myapp-container
         image: nginxdemos/hello:latest
+
+        volumeMounts:
+        - mountPath: "/mnt/data"
+          name: volume-myapp
+
+        envFrom:
+          - configMapRef:
+              name: configmap-myapp
+          - secretRef:
+              name: secret-myapp
 
         resources:
           requests:

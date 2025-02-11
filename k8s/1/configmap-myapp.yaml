@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: configmap-myapp
+  namespace: <prenom>-test2
+data:
+  APPVERSION: "42"

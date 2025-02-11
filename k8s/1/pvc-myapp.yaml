@@ -1,0 +1,12 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: pvc-myapp
+  namespace: <prenom>-test2
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: "longhorn"
+  resources:
+    requests:
+      storage: 40Mi

@@ -28,6 +28,12 @@ spec:
       - name: myapp-container
         image: nginxdemos/hello:latest
 
+        envFrom:
+          - configMapRef:
+              name: configmap-myapp
+          - secretRef:
+              name: secret-myapp
+
         resources:
           requests:
             memory: "16M"
@@ -45,11 +51,8 @@ spec:
           periodSeconds: 10
 
         livenessProbe:
-          exec:
-            command:
-              - sh
-              - -c
-              - curl -s -o /dev/null -w "%{http_code}" http://localhost/ | grep -q 200$
+          tcpSocket:
+            port: 80
           periodSeconds: 60
           failureThreshold: 1
           initialDelaySeconds: 0
@@ -62,8 +65,3 @@ spec:
           failureThreshold: 3
           initialDelaySeconds: 0
           timeoutSeconds: 5
-
-      initContainers:
-      - name: init-myservice
-        image: busybox:1.28
-        command: ['sh', '-c', 'for i in 1 2 3 4 5 6 7 8 9 10; do echo  `date +"%Y-%m-%d %T"` "Waiting for some dependancies" && sleep 1 ; done']

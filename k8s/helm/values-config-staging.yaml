@@ -1,0 +1,16 @@
+appId: 42
+
+replicaCount: 3
+
+image:
+  repository: nginxdemos/hello
+  tag: "latest"
+
+ressourceRequest:
+  memory: 256M #256 Mo RAM
+  cpu: 250m # 1/4 core de CPU
+  ephemeralStorage: 512M #512 Mo de storage non persistent (en + de ce qui est dans l'image)
+ressourceLimit:
+  memory: 512M #512 Mo RAM, au delà eviction
+  cpu: 500m # 1/2 core de CPU, au delà CPU Throttle
+  ephemeralStorage: 512M #512 Mo de storage non persistent  (en + de ce qui est dans l'image), au delà éviction
