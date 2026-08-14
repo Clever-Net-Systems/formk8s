@@ -1,0 +1,14 @@
+# La GatewayClass est un objet CLUSTER-SCOPED (pas de namespace).
+# Elle designe le controller qui va reconcilier les Gateway : ici Traefik.
+#
+# ATTENTION : le chart Helm Traefik installe deja une GatewayClass "traefik"
+# quand on active providers.kubernetesGateway.enabled=true.
+# Verifier avant d'appliquer ce fichier :
+#   kubectl get gatewayclass
+# Si elle existe deja, ce manifeste est fourni a titre pedagogique uniquement.
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: traefik
+spec:
+  controllerName: traefik.io/gateway-controller

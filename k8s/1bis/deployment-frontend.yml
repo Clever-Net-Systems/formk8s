@@ -64,9 +64,9 @@ spec:
           timeoutSeconds: 5
 
       - name: my-sidecar-pod
-        image: busybox:1.28
+        image: busybox:1.38
         command: ['sh', '-c', 'while true; do echo "Hello from the sidecar container" && sleep 3 ; done']
-        
+
         resources:
           requests:
             memory: "8M"

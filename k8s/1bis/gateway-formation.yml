@@ -1,0 +1,39 @@
+# Gateway MUTUALISEE -- objet "ops", pose une seule fois par le formateur.
+# Les etudiants n'y touchent pas : ils ne creent qu'une HTTPRoute dans leur
+# propre Namespace (voir httproute-monapp.yml).
+#
+# C'est la separation des roles de Gateway API :
+#   - qui expose (ports, protocoles)      -> Gateway,    ici, namespace traefik
+#   - qui route  (chemins, backends)      -> HTTPRoute,  chez chaque etudiant
+#
+# Rappel sur le port : 8000 est l'entryPoint INTERNE "web" de Traefik.
+# C'est le Service LoadBalancer du chart qui publie 80 -> 8000 sur le NLB.
+# Un listener sur le port 80 resterait "Accepted=False".
+#
+# Pas de listener HTTPS ici : le TLS est termine en amont par le WAF.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: gateway-formation
+  namespace: traefik
+spec:
+  gatewayClassName: traefik
+
+  listeners:
+  - name: web
+    protocol: HTTP
+    port: 8000
+
+    # Garde-fou : une HTTPRoute ne peut revendiquer qu'un sous-domaine de
+    # clevernetsystems.com. Une route qui demanderait un autre domaine est
+    # rejetee avec Accepted=False / NoMatchingListenerHostname.
+    hostname: "*.clevernetsystems.com"
+
+    allowedRoutes:
+      # "All" (et non "Same") : c'est ce qui autorise les HTTPRoute des
+      # Namespaces <prenom>-test3 a s'attacher a cette Gateway.
+      # Variante plus fine : from: Selector + matchLabels sur les Namespaces.
+      namespaces:
+        from: All
+      kinds:
+      - kind: HTTPRoute

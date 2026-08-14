@@ -1,0 +1,41 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: httproute-monapp
+  namespace: <prenom>-test3
+spec:
+  # Attachement CROSS-NAMESPACE a la Gateway mutualisee.
+  # Pas besoin de ReferenceGrant ici : le consentement est deja donne par
+  # allowedRoutes.namespaces.from=All cote Gateway.
+  # (Un ReferenceGrant ne serait necessaire que pour un backendRef ou un
+  #  certificateRef pointant vers un AUTRE Namespace.)
+  parentRefs:
+  - name: gateway-formation
+    namespace: traefik
+    sectionName: web
+
+  # Equivalent du "host:" des regles d'Ingress.
+  # Doit intersecter le hostname du listener (*.clevernetsystems.com).
+  hostnames:
+  - test<x>.clevernetsystems.com
+
+  rules:
+  # L'ordre n'a pas d'importance : la specification Gateway API donne la
+  # priorite au prefixe le plus long, donc /api gagne toujours sur /.
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /api
+    backendRefs:
+    # Resolu dans le Namespace de la HTTPRoute, pas dans celui de la Gateway.
+    - name: service-api-clusterip
+      port: 8080
+
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    # Resolu dans le Namespace de la HTTPRoute, pas dans celui de la Gateway.
+    - name: service-frontend-clusterip
+      port: 80

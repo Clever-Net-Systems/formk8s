@@ -65,5 +65,5 @@ spec:
 
       initContainers:
       - name: init-myservice
-        image: busybox:1.28
+        image: busybox:1.38
         command: ['sh', '-c', 'for i in 1 2 3 4 5 6 7 8 9 10; do echo  `date +"%Y-%m-%d %T"` "Waiting for some dependancies" && sleep 1 ; done']
