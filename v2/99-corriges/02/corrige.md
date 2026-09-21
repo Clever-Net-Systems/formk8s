@@ -83,5 +83,5 @@ Rétablir `autoindex on;` dans `templates/configmap-backend.yaml`, puis
 
 ---
 
-*Retour à l'état sain : `diff -ru ../00-initial ../02` montre exactement
+*Retour à l'état sain : `diff -ru ../../00-initial ../../02` montre exactement
 ce qui a été modifié.*

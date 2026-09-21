@@ -89,7 +89,7 @@ frontend:
       cpu: "50m"
       ephemeral-storage: "128M"
     limits:
-      memory: "128M"
+      memory: "64Gi"
       cpu: "300m"
       ephemeral-storage: "512M"
 

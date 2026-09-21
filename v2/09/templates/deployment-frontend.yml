@@ -60,9 +60,10 @@ spec:
                 name: secret-myapp
 
           volumeMounts:
-            # La configuration nginx remplace tout /etc/nginx/conf.d
+            # Modele de configuration : l'image le traite avec envsubst au
+            # demarrage et ecrit le resultat dans /etc/nginx/conf.d/default.conf
             - name: nginx-conf
-              mountPath: /etc/nginx/conf.d
+              mountPath: /etc/nginx/templates
               readOnly: true
             - name: nginx-html
               mountPath: /usr/share/nginx/html
@@ -105,8 +106,8 @@ spec:
           configMap:
             name: configmap-frontend
             items:
-              - key: default.conf
-                path: default.conf
+              - key: default.conf.template
+                path: default.conf.template
         - name: nginx-html
           configMap:
             name: configmap-frontend

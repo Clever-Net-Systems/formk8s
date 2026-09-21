@@ -7,9 +7,16 @@ metadata:
     {{- include "monchart.labels" . | nindent 4 }}
 data:
   # ---------------------------------------------------------------------------
-  # Configuration nginx du tier frontend
+  # Modele de configuration nginx du tier frontend.
+  #
+  # L'image nginx traite les fichiers de /etc/nginx/templates avec envsubst au
+  # demarrage du conteneur : les variables d'environnement y sont remplacees,
+  # et le resultat est ecrit dans /etc/nginx/conf.d/default.conf. C'est ce qui
+  # permet d'afficher APPID, que nginx ne saurait pas lire autrement.
+  # Les variables nginx ($hostname, $host...) ne sont pas touchees : envsubst
+  # ne remplace que les noms presents dans l'environnement.
   # ---------------------------------------------------------------------------
-  default.conf: |
+  default.conf.template: |
     # nginx-unprivileged tourne en UID 101 : impossible d'ecouter sous 1024.
     server {
         listen       {{ .Values.frontend.containerPort }};
@@ -36,7 +43,9 @@ data:
 
         location = /whoami {
             default_type text/plain;
-            return 200 "tier: frontend\npod:  $hostname\n";
+            # APPID est fige ici au demarrage du conteneur : c'est la valeur que
+            # le pod a recue, pas forcement celle du ConfigMap a cet instant.
+            return 200 "tier:  frontend\npod:   $hostname\nappid: ${APPID}\n";
         }
 
         # Tout /api/ est proxifie vers le tier backend.
@@ -112,6 +121,7 @@ data:
       <h1>Formation Kubernetes &mdash; TP troubleshooting</h1>
       <div class="pill">tier frontend</div>
       <div class="pill">pod <!--# echo var="hostname" default="inconnu" --></div>
+      <div class="pill" id="pill-appid">APPID&hellip;</div>
     </div></header>
 
     <main>
@@ -148,6 +158,17 @@ data:
     }
 
     async function refresh() {
+      // 0) APPID tel que ce pod frontend l'a recu a son demarrage. Si le
+      //    ConfigMap a change depuis sans que les pods soient redemarres,
+      //    c'est encore l'ancienne valeur qui s'affiche ici.
+      try {
+        var moi = await (await fetch("/whoami", { cache: "no-store" })).text();
+        var appid = (moi.match(/appid:\s*(\S*)/) || [])[1] || "?";
+        document.getElementById("pill-appid").textContent = "APPID " + appid;
+      } catch (e) {
+        document.getElementById("pill-appid").textContent = "APPID ?";
+      }
+
       // 1) backend, via le reverse-proxy /api/ du frontend
       try {
         var r = await fetch("/api/whoami", { cache: "no-store" });
@@ -172,14 +193,18 @@ data:
         var report = await r2.text();
         document.getElementById("report").textContent = report;
 
+        // Le CronJob ecrit un rapport chaque minute. On tolere une execution
+        // manquee (le job peut attendre Elasticsearch jusqu'a 30 s) ; au-dela,
+        // la chaine est consideree comme cassee.
+        var FRAICHEUR_MAX_MIN = 2.5;
         var m = report.match(/date\s*:\s*(\S+)/);
         var ageMin = null;
         if (m) ageMin = (Date.now() - Date.parse(m[1])) / 60000;
-        var frais = ageMin !== null && ageMin < 5;
+        var frais = ageMin !== null && ageMin < FRAICHEUR_MAX_MIN;
         setState("rep", frais, frais
           ? "rapport du CronJob : " + m[1] + " (il y a " + ageMin.toFixed(1) + " min)"
           : m
-            ? "rapport du CronJob : PERIME (" + m[1] + ", il y a " + ageMin.toFixed(0) + " min)"
+            ? "rapport du CronJob : PERIME (" + m[1] + ", il y a " + ageMin.toFixed(1) + " min)"
             : "rapport du CronJob : illisible");
 
         // 3) sante du cluster Elasticsearch, telle que vue par le CronJob.

@@ -56,5 +56,5 @@ Rétablir `path: /healthz` dans la `livenessProbe`, puis `helm upgrade`.
 
 ---
 
-*Retour à l'état sain : `diff -ru ../00-initial ../03` montre exactement
+*Retour à l'état sain : `diff -ru ../../00-initial ../../03` montre exactement
 ce qui a été modifié.*

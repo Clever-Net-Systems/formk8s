@@ -9,14 +9,12 @@
 ## Mise en place
 
 ```bash
-# Cet exercice change la taille d'un volume : un PVC ne peut pas retrecir,
-# il faut donc repartir d'une installation neuve.
-helm uninstall monchart -n <prenom>-tshoot
-kubectl -n <prenom>-tshoot delete pvc --all
-
 cd v2/12
-helm install monchart . -n <prenom>-tshoot
+helm upgrade --install monchart . -n <prenom>-tshoot
 ```
+
+L'import met quelques dizaines de secondes à remplir le volume : laissez-lui
+le temps avant de conclure.
 
 ## Contexte
 

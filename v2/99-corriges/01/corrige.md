@@ -62,5 +62,5 @@ puis `helm upgrade --install monchart . -n <ns>`.
 
 ---
 
-*Retour à l'état sain : `diff -ru ../00-initial ../01` montre exactement
+*Retour à l'état sain : `diff -ru ../../00-initial ../../01` montre exactement
 ce qui a été modifié.*

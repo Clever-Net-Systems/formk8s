@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Difficulté** | ***.. |
+| **Difficulté** | **... |
 | **Durée indicative** | 20 min |
 | **Chart** | copie de `v2/00-initial` avec une panne introduite |
 
@@ -21,9 +21,12 @@ Les tiers frontend, backend et Elasticsearch sont pourtant tous en bonne santé.
 
 ## Ce que vous devez constater
 
+* des Jobs en échec s'accumulent
 * les rapports ne sont plus mis à jour (`kubectl port-forward
   svc/service-backend-clusterip 8080:80` puis `http://localhost:8080/reports/`)
-* des Jobs en échec s'accumulent
+* sur la page du frontend, la pastille du rapport reste verte pendant les deux
+  premières minutes, puis passe au rouge (`PERIME`) : le tableau de bord tolère
+  une exécution manquée avant de signaler la panne
 
 ## Votre mission
 
@@ -37,9 +40,11 @@ rapport est bien écrit.
 * Combien de Jobs en échec sont conservés ? Et combien de Jobs réussis ?
   Qu'est-ce qui pilote cela dans le chart ?
 * Comment lire les logs d'un Job déjà terminé ?
-* Le message d'erreur vient-il du script, ou du serveur qu'il interroge ?
-* Pourquoi le rapport n'est-il même pas écrit sur le volume, alors que l'erreur
-  concerne Elasticsearch ? (lisez le script dans `configmap-report-script`)
+* Le message d'erreur est sans ambiguïté. Le fichier qu'il ne trouve pas, d'où
+  vient-il ? Qu'est-ce qui le place dans le conteneur ?
+* Quel est le nom réel de ce fichier, et où est-il défini dans le chart ?
+* Pourquoi aucun rapport n'est écrit, alors que le volume partagé est
+  parfaitement accessible ?
 
 ## Critère de réussite
 

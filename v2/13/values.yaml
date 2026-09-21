@@ -45,7 +45,10 @@ storage:
   # differents, le montent en meme temps.
   reports:
     accessMode: ReadWriteMany
-    size: 1Gi
+    # 2Gi et non 1Gi : ce dossier prend la suite de l'exercice 12, ou le volume
+    # partage a ete agrandi. Le chart doit declarer la taille reelle du volume,
+    # sinon l'API refuse la mise a jour (on ne retrecit pas un PVC).
+    size: 2Gi
     # Vide ("") = StorageClass par defaut du cluster.
     #
     # PREREQUIS : le CronJob ecrit a la racine de ce volume en non-root. Il faut
@@ -58,7 +61,7 @@ storage:
     mountPath: /data
   # Donnees d'Elasticsearch (volumeClaimTemplates du StatefulSet), RWO.
   elasticsearch:
-    size: 128Mi
+    size: 2Gi
     storageClassName: "longhorn"
 
 # -----------------------------------------------------------------------------

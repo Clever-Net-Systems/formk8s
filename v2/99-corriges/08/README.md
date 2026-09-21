@@ -22,6 +22,9 @@ Pourtant l'application continue d'utiliser 42.
 
 ## Ce que vous devez constater
 
+* en haut de la page du frontend, la pastille affiche toujours `APPID 42`
+* le ConfigMap, lui, contient bien la nouvelle valeur :
+
 ```bash
 kubectl -n <prenom>-tshoot get cm configmap-myapp -o jsonpath='{.data.APPID}'
 kubectl -n <prenom>-tshoot exec deploy/deployment-frontend -- env | grep APPID
@@ -48,8 +51,9 @@ chart durablement correct pour que le problème ne se reproduise pas.
 
 ## Critère de réussite
 
-`kubectl exec deploy/deployment-frontend -- env | grep APPID` renvoie 99, et
-une modification ultérieure de `appId` est prise en compte automatiquement.
+La page affiche `APPID 99`, `kubectl exec deploy/deployment-frontend -- env |
+grep APPID` renvoie 99, et une modification ultérieure de `appId` est prise en
+compte automatiquement.
 
 ---
 

@@ -220,7 +220,7 @@ reportCronJob:
     pullPolicy: IfNotPresent
 
   # Index Elasticsearch alimente par le job.
-  indexName: "Formation-Reports"
+  indexName: "formation-reports"
   # Nombre de rapports conserves sur le volume (rotation). Entier >= 1.
   keepReports: 20
 

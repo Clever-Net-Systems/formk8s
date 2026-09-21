@@ -65,5 +65,5 @@ puis `helm upgrade`. Les pods frontend redémarrent grâce au `checksum/`.
 
 ---
 
-*Retour à l'état sain : `diff -ru ../00-initial ../07` montre exactement
+*Retour à l'état sain : `diff -ru ../../00-initial ../../07` montre exactement
 ce qui a été modifié.*

@@ -17,7 +17,15 @@
      requests:
 -      memory: "32M"
 +      memory: "64Gi"
+     limits:
+-      memory: "128M"
++      memory: "64Gi"
 ```
+
+Les deux valeurs ont été changées, et pas seulement la `request` : l'API refuse
+un conteneur dont la `request` dépasse sa `limit` (`must be less than or equal
+to memory limit`). Avec seulement la `request` modifiée, `helm upgrade`
+échouerait et il n'y aurait aucun pod à diagnostiquer.
 
 ## Démarche de diagnostic
 
@@ -44,6 +52,11 @@ kubectl describe node <noeud> | grep -A8 'Allocated resources'
 
 Rétablir `memory: "32M"` dans les `requests` du frontend, puis `helm upgrade`.
 
+Remarque pour l'animation : 64 Gio dépasse largement la capacité d'un nœud de
+formation. Si vos nœuds sont plus gros, montez la valeur (`512Gi`) pour que le
+pod reste bien `Pending` :
+`kubectl describe node <nœud> | grep -A6 Allocatable`.
+
 ## Rappel théorique
 
 * `requests` = ce qui est **réservé** : sert au placement et au calcul de la
@@ -56,5 +69,5 @@ Rétablir `memory: "32M"` dans les `requests` du frontend, puis `helm upgrade`.
 
 ---
 
-*Retour à l'état sain : `diff -ru ../00-initial ../04` montre exactement
+*Retour à l'état sain : `diff -ru ../../00-initial ../../04` montre exactement
 ce qui a été modifié.*

@@ -65,5 +65,5 @@ recalcule la liste en permanence.
 
 ---
 
-*Retour à l'état sain : `diff -ru ../00-initial ../06` montre exactement
+*Retour à l'état sain : `diff -ru ../../00-initial ../../06` montre exactement
 ce qui a été modifié.*

@@ -22,6 +22,11 @@ et c'est un des pièges les plus fréquents en production.
 
 ## Démarche de diagnostic
 
+La page du frontend affiche toujours `APPID 42`. Cette valeur lui vient de
+`/whoami`, que nginx produit à partir de son modèle de configuration : le
+modèle est traité par `envsubst` **au démarrage du conteneur**, la valeur y est
+donc figée exactement comme une variable d'environnement.
+
 ```bash
 kubectl -n <ns> get cm configmap-myapp -o jsonpath='{.data.APPID}{"\n"}'
 # 99   <- le ConfigMap a bien été mis à jour
@@ -49,6 +54,8 @@ Correction immédiate :
 kubectl -n <ns> rollout restart deploy/deployment-frontend deploy/deployment-backend
 ```
 
+La pastille de la page passe alors à `APPID 99`.
+
 Correction durable : ajouter au Deployment l'annotation qui existe déjà pour
 les deux autres ConfigMap, dans `templates/deployment-frontend.yml` et
 `templates/deployment-backend.yml` :
@@ -74,5 +81,5 @@ template change donc aussi, et Helm déclenche un roulement des pods.
 
 ---
 
-*Retour à l'état sain : `diff -ru ../00-initial ../08` montre exactement
+*Retour à l'état sain : `diff -ru ../../00-initial ../../08` montre exactement
 ce qui a été modifié.*

@@ -21,23 +21,29 @@ morts s'accumulent dans le namespace.
 
 ## Ce que vous devez constater
 
-* de nouveaux pods frontend apparaissent, puis passent en `Evicted` au bout de
-  quelques dizaines de secondes
-* la liste des pods s'allonge au fil des minutes
+* de nouveaux pods frontend apparaissent, vivent une quinzaine de secondes,
+  puis passent en `Completed` sans jamais avoir été `Ready`
+* la liste des pods s'allonge à chaque tentative
 * le site continue de répondre (les anciens pods tiennent bon)
 
 ## Votre mission
 
-Comprendre qui évincé ces pods et pourquoi, puis corriger.
+Comprendre qui arrête ces pods et pourquoi, puis corriger.
 
 ## Questions pour vous guider
 
-* `kubectl describe pod <un pod Evicted>` : quel est le message exact ?
+* Un pod géré par un Deployment qui affiche `Completed`, est-ce normal ? Que
+  sont censés faire ses conteneurs ?
+* Le statut du pod ne dit rien :
+  `kubectl get pod <pod> -o custom-columns='PHASE:.status.phase,RAISON:.status.reason,MESSAGE:.status.message'`
+  renvoie `Succeeded  <none>  <none>`. Où chercher, alors ?
+* Regardez les **événements** : `kubectl describe pod <pod> | tail -10`.
+  Qui parle, et que dit-il ?
 * Qu'est-ce que le "stockage éphémère" d'un pod, concrètement ? Qu'est-ce qui
   est compté dedans, et qu'est-ce qui ne l'est pas ?
-* Le volume `pvc-reports` est-il concerne ?
-* Quelle différence entre un pod `Evicted` et un conteneur `OOMKilled` ?
-* Comment nettoyer les pods `Evicted` une fois la panne corrigée ?
+* Le volume `pvc-reports` est-il concerné ?
+* Quelle différence entre un pod arrêté par kubelet et un conteneur `OOMKilled` ?
+* Comment nettoyer ces pods morts une fois la panne corrigée ?
 
 ## Critère de réussite
 

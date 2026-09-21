@@ -45,7 +45,7 @@ storage:
   # differents, le montent en meme temps.
   reports:
     accessMode: ReadWriteMany
-    size: 64Mi
+    size: 1Gi
     # Vide ("") = StorageClass par defaut du cluster.
     #
     # PREREQUIS : le CronJob ecrit a la racine de ce volume en non-root. Il faut

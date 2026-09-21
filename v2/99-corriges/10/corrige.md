@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Panne** | Job `job-purge` ajouté, non conforme au profil `restricted` (root, escalade autorisée, seccomp et capabilities absents) |
+| **Panne** | Job `job-purge` ajouté, avec `runAsNonRoot: false` : une seule ligne le rend non conforme au profil `restricted` |
 | **Fichier(s) modifié(s)** | `templates/job-purge.yml` (ajouté) |
 | **Symptôme attendu** | le Job existe, aucun pod n'est jamais créé |
 
@@ -10,18 +10,23 @@
 
 ## La panne injectée
 
-Ajout de `templates/job-purge.yml`, dont le pod viole le profil `restricted` à
-quatre titres :
+Ajout de `templates/job-purge.yml`. Le pod respecte le profil `restricted` sur
+tous les points — seccomp, capabilities, escalade de privilèges, UID non-root —
+sauf **un seul** :
 
 ```yaml
       securityContext:
-        runAsUser: 0            # root
-      # runAsNonRoot absent
-      # seccompProfile absent
-          securityContext:
-            allowPrivilegeEscalation: true   # interdit
-            # capabilities.drop: ["ALL"] absent
+        runAsNonRoot: false      # <- le seul point bloquant
+        runAsUser: 65534         # (pourtant bien un UID non-root)
+        runAsGroup: 65534
+        fsGroup: 2000
+        seccompProfile:
+          type: RuntimeDefault
 ```
+
+Le conteneur tournerait donc réellement en non-root. Mais Pod Security
+Admission ne regarde pas ce que fait l'image : il vérifie ce que le manifeste
+**déclare**. Tant que `runAsNonRoot` n'est pas à `true`, le pod est refusé.
 
 ## Démarche de diagnostic
 
@@ -34,17 +39,13 @@ kubectl -n <ns> get jobs
 # job-purge   Running   0/1                      3m
 
 kubectl -n <ns> describe job job-purge | tail -12
-#   Warning  FailedCreate  ... Error creating: pods "job-purge-" is forbidden:
-#   violates PodSecurity "restricted:latest":
-#     allowPrivilegeEscalation != false (container "purge-container" must set
-#       securityContext.allowPrivilegeEscalation=false),
-#     unrestricted capabilities (container "purge-container" must set
-#       securityContext.capabilities.drop=["ALL"]),
-#     runAsNonRoot != true, runAsUser=0, seccompProfile
+#   Warning  FailedCreate  ... Error creating: pods "job-purge-xxxxx" is forbidden:
+#   violates PodSecurity "restricted:latest": runAsNonRoot != true
+#   (pod must not set securityContext.runAsNonRoot=false)
 ```
 
-Le message donne la liste complète de ce qui manque. On peut aussi le retrouver
-dans les événements du namespace :
+Le message nomme exactement le champ fautif. On peut aussi le retrouver dans
+les événements du namespace :
 
 ```bash
 kubectl -n <ns> get events --sort-by=.lastTimestamp | grep -i forbidden | tail -3
@@ -52,25 +53,16 @@ kubectl -n <ns> get events --sort-by=.lastTimestamp | grep -i forbidden | tail -
 
 ## Correction
 
-Aligner le Job sur ce que fait déjà le CronJob du chart, dans
-`templates/job-purge.yml` :
+Une seule ligne, dans `templates/job-purge.yml` :
 
-```yaml
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 65534
-        runAsGroup: 65534
-        fsGroup: 2000            # pour ecrire sur le volume partage
-        seccompProfile:
-          type: RuntimeDefault
-      containers:
-        - name: purge-container
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
+```diff
+       securityContext:
+-        runAsNonRoot: false
++        runAsNonRoot: true
 ```
+
+puis `helm upgrade`. Le Job crée alors son pod, qui se termine en quelques
+secondes.
 
 Abaisser le namespace en `baseline` ferait disparaître le message, mais
 reviendrait à supprimer le garde-fou pour toute l'application : la règle est de
@@ -83,6 +75,9 @@ corriger la charge de travail, pas la politique.
   trouve sur le ReplicaSet / le Job, jamais sur un pod qui n'existe pas.
 * Trois modes, cumulables par namespace : `enforce` (refuse), `audit` (journal),
   `warn` (avertissement dans la sortie kubectl).
+* Pod Security Admission est **déclaratif** : il lit le manifeste, il
+  n'inspecte pas l'image. Un conteneur qui tournerait en non-root est quand
+  même refusé s'il ne le déclare pas.
 * Le profil `restricted` exige au minimum : `runAsNonRoot: true`,
   `allowPrivilegeEscalation: false`, `capabilities.drop: ["ALL"]`,
   `seccompProfile.type: RuntimeDefault`, et des types de volumes limites.
@@ -91,5 +86,5 @@ corriger la charge de travail, pas la politique.
 
 ---
 
-*Retour à l'état sain : `diff -ru ../00-initial ../10` montre exactement
+*Retour à l'état sain : `diff -ru ../../00-initial ../../10` montre exactement
 ce qui a été modifié.*

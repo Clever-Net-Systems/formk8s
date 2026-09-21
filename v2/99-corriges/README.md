@@ -8,18 +8,24 @@ puis corrigent le chart eux-mêmes.
 | Dossier | Contenu |
 |---|---|
 | `00-initial/` | le chart Helm de référence, **il fonctionne parfaitement** |
-| `01/` à `13/` | une copie du chart avec **une** panne, plus `README.md` (énoncé) et `corrige.md` (solution) |
+| `01/` à `13/` | une copie du chart avec **une** panne — le chart seul, rien d'autre |
+| `99-corriges/` | **ce dossier** : les énoncés, les corrigés, et ce document |
 | `namespace-restricted.yaml` | le namespace de TP, avec Pod Security Admission `enforce: restricted` |
 | `architecture.svg` / `.png` | le schéma ci-dessous |
 
 Chaque dossier repart de `00-initial` : **les pannes ne sont pas cumulatives**.
 `diff -ru 00-initial 07` montre exactement ce qui a été cassé.
 
+> Ce document et les corrigés sont rangés dans `99-corriges/` à dessein : la
+> solution n'est pas à portée de `ls` pendant la séance, et le déroulé se fait
+> avec les slides. **Toutes les commandes ci-dessous se lancent depuis le
+> répertoire `v2/`.**
+
 ---
 
 ## Ce que déploie le chart
 
-![Architecture de l'application](architecture.png)
+![Architecture de l'application](../architecture.png)
 
 Une application **3 tiers** plus un traitement par lot. Le point important pour
 la formation : **chaque maillon cassé se voit depuis le navigateur**, et le
@@ -29,8 +35,9 @@ diagnostic se fait ensuite avec `kubectl`.
 
 **`deployment-frontend`** (nginx non-root, 2 replicas)
 Sert une page HTML qui affiche en direct l'état de la chaîne : backend
-joignable ou non, fraîcheur du dernier rapport, état du cluster Elasticsearch.
-La page se rafraîchit toutes les 15 s et indique quel pod a répondu.
+joignable ou non, fraîcheur du dernier rapport, état du cluster Elasticsearch,
+ainsi que l'`APPID` que le pod a reçu à son démarrage. La page se rafraîchit
+toutes les 15 s et indique quel pod a répondu.
 Il proxifie `/api/` vers le tier backend ; si celui-ci ne répond pas, il renvoie
 une 503 explicite plutôt qu'une erreur brute.
 
@@ -102,21 +109,21 @@ Trois images publiques, aucune image custom :
 
 ## Les exercices
 
-| # | Titre | Difficulté | Durée | Notion travaillée |
-|---|---|---|---|---|
-| [01](01/) | Le déploiement ne se termine jamais | `*....` | 10 min | `ImagePullBackOff`, événements du pod |
-| [02](02/) | Le tier backend redémarre en boucle | `**...` | 15 min | `CrashLoopBackOff`, `logs --previous` |
-| [03](03/) | Un pod qui redémarre sans raison apparente | `**...` | 15 min | sondes liveness / readiness / startup |
-| [04](04/) | Des pods qui restent en Pending | `*....` | 10 min | scheduling, `requests` et `limits` |
-| [05](05/) | Elasticsearch ne démarre plus après un ajustement | `***..` | 15 min | `OOMKilled`, mémoire d'une JVM en conteneur |
-| [06](06/) | Le backend est en bonne santé mais injoignable | `***..` | 15 min | Service ClusterIP, sélecteurs, Endpoints |
-| [07](07/) | Une 503 qui n'apparaît que dans les logs | `***..` | 15 min | logs applicatifs, `port` et `targetPort` |
-| [08](08/) | La configuration a changé, l'application non | `***..` | 15 min | ConfigMap, `envFrom`, `rollout restart` |
-| [09](09/) | Plus aucun rapport depuis ce matin | `***..` | 20 min | CronJob, Jobs, historique et logs |
-| [10](10/) | Un Job qui ne crée aucun pod | `****.` | 15 min | Pod Security Admission, refus à l'admission |
-| [11](11/) | Des pods évincés les uns après les autres | `****.` | 15 min | stockage éphémère, éviction |
-| [12](12/) | Volume partagé saturé | `****.` | 20 min | volume RWX plein, extension d'un PVC |
-| [13](13/) | Elasticsearch passe en lecture seule | `*****` | 25 min | seuils de disque ES, resize d'un StatefulSet |
+| # | Titre | Difficulté | Durée | Notion travaillée | |
+|---|---|---|---|---|---|
+| [01](01/README.md) | Le déploiement ne se termine jamais | `*....` | 10 min | `ImagePullBackOff`, événements du pod | [corrigé](01/corrige.md) |
+| [02](02/README.md) | Le tier backend redémarre en boucle | `**...` | 15 min | `CrashLoopBackOff`, `logs --previous` | [corrigé](02/corrige.md) |
+| [03](03/README.md) | Un pod qui redémarre sans raison apparente | `**...` | 15 min | sondes liveness / readiness / startup | [corrigé](03/corrige.md) |
+| [04](04/README.md) | Des pods qui restent en Pending | `*....` | 10 min | scheduling, `requests` et `limits` | [corrigé](04/corrige.md) |
+| [05](05/README.md) | Elasticsearch ne démarre plus après un ajustement | `***..` | 15 min | `OOMKilled`, mémoire d'une JVM en conteneur | [corrigé](05/corrige.md) |
+| [06](06/README.md) | Le backend est en bonne santé mais injoignable | `***..` | 15 min | Service ClusterIP, sélecteurs, Endpoints | [corrigé](06/corrige.md) |
+| [07](07/README.md) | Une 503 qui n'apparaît que dans les logs | `***..` | 15 min | logs applicatifs, `port` et `targetPort` | [corrigé](07/corrige.md) |
+| [08](08/README.md) | La configuration a changé, l'application non | `***..` | 15 min | ConfigMap, `envFrom`, `rollout restart` | [corrigé](08/corrige.md) |
+| [09](09/README.md) | Plus aucun rapport depuis ce matin | `**...` | 20 min | CronJob, Jobs, historique et logs | [corrigé](09/corrige.md) |
+| [10](10/README.md) | Un Job qui ne crée aucun pod | `****.` | 15 min | Pod Security Admission, refus à l'admission | [corrigé](10/corrige.md) |
+| [11](11/README.md) | Des pods évincés les uns après les autres | `****.` | 15 min | stockage éphémère, éviction | [corrigé](11/corrige.md) |
+| [12](12/README.md) | Volume partagé saturé | `****.` | 20 min | volume RWX plein, extension d'un PVC | [corrigé](12/corrige.md) |
+| [13](13/README.md) | Elasticsearch passe en lecture seule | `*****` | 25 min | disque plein, resize du volume d'un StatefulSet | [corrigé](13/corrige.md) |
 
 ### Déroulé proposé pour 4 h
 
@@ -135,13 +142,13 @@ pas en 4 h avec les rappels théoriques. Parcours conseillé, **10 exercices** :
 | 2:45 - 3:05 | Exercice **09** (CronJob) |
 | 3:05 - 3:20 | Rappel : Pod Security Admission et profil `restricted` |
 | 3:20 - 3:35 | Exercice **10** |
-| 3:35 - 4:00 | Exercice **13** (le plus riche : stockage, StatefulSet, seuils ES) |
+| 3:35 - 4:00 | Exercice **13** (le plus riche : disque plein et resize du volume d'un StatefulSet) |
 
 Les exercices **08, 11 et 12** restent disponibles en bonus, ou pour remplacer
 un exercice du parcours selon le public. Si la session est plus courte, les
 exercices 01 à 06 forment un socle cohérent.
 
-### Comment se déroulé un exercice
+### Comment se déroule un exercice
 
 ```bash
 cd v2/01
@@ -157,14 +164,19 @@ lui-même, il n'y aurait plus rien à diagnostiquer. Une livraison cassée est
 donc toujours signalée `deployed` par Helm — c'est normal, et ce n'est jamais
 le symptôme.
 
-Le `README.md` du dossier donne le contexte, ce qu'il faut constater et des
-questions pour guider la recherche. Le `corrige.md` donne la panne exacte, la
-démarche de diagnostic pas a pas, la correction et un rappel théorique :
+L'énoncé (`99-corriges/<NN>/README.md`) donne le contexte, ce qu'il faut
+constater et des questions pour guider la recherche. Le corrigé
+(`99-corriges/<NN>/corrige.md`) donne la panne exacte, la démarche de
+diagnostic pas à pas, la correction et un rappel théorique :
 **il n'est pas distribué avant la fin de l'exercice**.
 
-Les exercices **12 et 13** modifient la taille d'un volume : ils demandent une
-installation neuve (un PVC ne peut pas rétrécir), et il faut également
-désinstaller proprement avant de passer à la suite :
+Les 13 exercices s'installent tous de la même façon : il n'y a jamais besoin de
+désinstaller entre deux. **Corrigez chaque panne avant de passer à la suivante**
+— certains effets survivent au changement de chart, par exemple un volume
+partagé rempli (exercice 12), qui ferait échouer le CronJob de l'exercice
+suivant pour une mauvaise raison.
+
+Pour repartir totalement propre en fin de séance :
 
 ```bash
 helm uninstall monchart -n <prenom>-tshoot
@@ -265,6 +277,10 @@ impose `seccompProfile`. D'où :
   tout laisse le pod **avant** `Running` (`ContainerCreating` + `FailedMount`).
 * **Un PVC peut grandir, jamais rétrécir**, et la taille d'un
   `volumeClaimTemplates` de StatefulSet est immuable.
+* **Ne pas modifier à la main un objet géré par Helm.** Helm 4 applique côté
+  serveur : le champ change de propriétaire et les `helm upgrade` suivants
+  échouent (`conflict with "kubectl-edit"`). Récupération :
+  `helm upgrade --force-conflicts`.
 * **`appName` finit dans `spec.selector`**, immuable : le changer sur une
   release installée fait échouer `helm upgrade`.
 * **`envFrom` ignore silencieusement** les clés de ConfigMap qui ne sont pas des

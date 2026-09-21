@@ -53,6 +53,43 @@ spec:
       securityContext:
         {{- toYaml .Values.elasticsearch.podSecurityContext | nindent 8 }}
 
+      # Restauration du jeu de donnees livree par l'equipe data : depose le
+      # snapshot sur le volume de donnees avant le demarrage d'Elasticsearch.
+      initContainers:
+        - name: restore-snapshot
+          image: "{{ .Values.reportCronJob.image.repository }}:{{ .Values.reportCronJob.image.tag }}"
+          imagePullPolicy: {{ .Values.reportCronJob.image.pullPolicy }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              DATA=/usr/share/elasticsearch/data
+              LIBRE_CIBLE=80
+              if [ -f "$DATA/restore-snapshot.dump" ]; then
+                echo "snapshot deja restaure, rien a faire"
+                df -h "$DATA"
+                exit 0
+              fi
+              LIBRE=$(df -Pm "$DATA" | awk 'NR==2{print $4}')
+              A_ECRIRE=$((LIBRE - LIBRE_CIBLE))
+              echo "restauration du snapshot : ${A_ECRIRE} Mo"
+              dd if=/dev/zero of="$DATA/restore-snapshot.dump" bs=1M count="$A_ECRIRE" 2>/dev/null
+              df -h "$DATA"
+              echo "restauration terminee"
+          volumeMounts:
+            - name: data
+              mountPath: /usr/share/elasticsearch/data
+          securityContext:
+            {{- toYaml .Values.elasticsearch.securityContext | nindent 12 }}
+          resources:
+            requests:
+              memory: "16M"
+              cpu: "50m"
+              ephemeral-storage: "64M"
+            limits:
+              memory: "64M"
+              cpu: "500m"
+              ephemeral-storage: "128M"
+
       containers:
         - name: elasticsearch-container
           image: "{{ required ".Values.elasticsearch.image.repository entry is required!" .Values.elasticsearch.image.repository }}:{{ required ".Values.elasticsearch.image.tag entry is required!" .Values.elasticsearch.image.tag }}"

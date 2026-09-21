@@ -13,10 +13,16 @@
 `values.yaml`, tier elasticsearch :
 
 ```diff
+     requests:
+-      memory: "1Gi"
++      memory: "512Mi"
      limits:
 -      memory: "1536Mi"
 +      memory: "512Mi"
 ```
+
+La `request` descend avec la `limite` : l'API refuse un conteneur dont la
+`request` dépasse sa `limit`, le pod ne serait alors même pas créé.
 
 Le tas de la JVM est fixé à `-Xms512m -Xmx512m` : à lui seul il remplit déjà la
 limite du conteneur, sans compter le hors-heap (metaspace, buffers réseau,
@@ -44,7 +50,8 @@ de message applicatif**. Les logs sont muets, seul `describe` parle. Le code 137
 
 ## Correction
 
-Rétablir `memory: "1536Mi"` dans les `limits` d'Elasticsearch.
+Rétablir `memory: "1Gi"` dans les `requests` et `memory: "1536Mi"` dans les
+`limits` d'Elasticsearch.
 
 L'autre correction possible serait de baisser le tas
 (`javaOpts: "-Xms256m -Xmx256m"`) pour tenir dans 512 Mi. Elle est mauvaise
@@ -63,5 +70,5 @@ problème vers des GC permanents et des erreurs `circuit_breaking_exception`.
 
 ---
 
-*Retour à l'état sain : `diff -ru ../00-initial ../05` montre exactement
+*Retour à l'état sain : `diff -ru ../../00-initial ../../05` montre exactement
 ce qui a été modifié.*

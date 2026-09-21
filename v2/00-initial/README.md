@@ -4,7 +4,7 @@ Chart Helm **volontairement sain** : c'est la version qui fonctionne, celle à l
 
 **La description complète du déploiement (architecture, rôle de chaque tier,
 objets créés, prérequis, choix liés au namespace `restricted`, pièges connus)
-est dans [`../README.md`](../README.md).**
+est dans [`../99-corriges/README.md`](../99-corriges/README.md).**
 
 ## Fichiers
 

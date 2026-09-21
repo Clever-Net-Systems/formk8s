@@ -60,7 +60,7 @@ spec:
               image: "{{ required ".Values.reportCronJob.image.repository entry is required!" .Values.reportCronJob.image.repository }}:{{ required ".Values.reportCronJob.image.tag entry is required!" .Values.reportCronJob.image.tag }}"
               imagePullPolicy: {{ .Values.reportCronJob.image.pullPolicy }}
 
-              command: ["/bin/sh", "/scripts/report.sh"]
+              command: ["/bin/sh", "/scripts/rapport.sh"]
 
               env:
                 - name: ES_HOST

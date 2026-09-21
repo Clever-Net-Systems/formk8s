@@ -40,14 +40,16 @@ déployable **sans affaiblir la sécurité du namespace**.
 * Quel est le niveau de Pod Security appliqué sur le namespace ?
   `kubectl get ns <prenom>-tshoot --show-labels`
 * Comparez le `securityContext` de ce Job avec celui du CronJob
-  `cronjob-report`, qui, lui, fonctionne. Qu'est-ce qui manque, exactement ?
+  `cronjob-report`, qui, lui, fonctionne. Qu'est-ce qui diffère, exactement ?
+* Le conteneur tournerait de toute façon en UID 65534, donc en non-root.
+  Pourquoi est-il quand même refusé ?
 * La commande `kubectl label ns ... pod-security.kubernetes.io/enforce=baseline`
   réglerait le problème : pourquoi est-ce la mauvaise réponse ?
 
 ## Critère de réussite
 
-`kubectl get jobs` affiche `job-purge 1/1`, et le namespace applique toujours
-`enforce: restricted`.
+`kubectl get jobs` affiche `job-purge 1/1`, le namespace applique toujours
+`enforce: restricted`, et **une seule ligne** du chart a été modifiée.
 
 ---
 

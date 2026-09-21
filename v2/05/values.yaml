@@ -180,7 +180,7 @@ elasticsearch:
 
   resources:
     requests:
-      memory: "1Gi"
+      memory: "512Mi"
       cpu: "200m"
       ephemeral-storage: "512M"
     limits:
