@@ -1,0 +1,18 @@
+apiVersion: v2
+name: monchart
+description: Application 3 tiers (frontend / backend / elasticsearch) pour les TP de troubleshooting
+
+# Application chart : il embarque des templates deployables (a l'inverse d'un library chart).
+type: application
+
+# Version du chart (a incrementer a chaque modification des templates).
+version: 0.2.0
+
+# Version de "l'application" deployee.
+appVersion: "2.0.0"
+
+keywords:
+  - formation
+  - troubleshooting
+maintainers:
+  - name: Antoine Hordez

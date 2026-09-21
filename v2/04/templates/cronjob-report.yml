@@ -1,0 +1,105 @@
+{{- if .Values.reportCronJob.enabled }}
+# Toutes les minutes : interroge Elasticsearch, ecrit un rapport sur le volume
+# RWX (servi par le backend sous /reports/) et indexe une trace dans
+# Elasticsearch.
+#
+#   kubectl get cronjob cronjob-report
+#   kubectl get jobs -l tier=report
+#   kubectl logs -l tier=report --tail=-1
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cronjob-report
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "monchart.labels" . | nindent 4 }}
+    tier: report
+
+spec:
+  schedule: {{ required ".Values.reportCronJob.schedule entry is required!" .Values.reportCronJob.schedule | quote }}
+  # Un seul job a la fois : si le precedent tourne encore, on ne lance rien.
+  concurrencyPolicy: Forbid
+  # Volontairement INFERIEUR a la periode : si le controleur a rate l'heure de
+  # plus de 45 s, l'occurrence est abandonnee plutot que rattrapee (sinon deux
+  # executions peuvent s'enchainer dos a dos).
+  startingDeadlineSeconds: {{ .Values.reportCronJob.startingDeadlineSeconds }}
+  successfulJobsHistoryLimit: {{ .Values.reportCronJob.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.reportCronJob.failedJobsHistoryLimit }}
+
+  jobTemplate:
+    metadata:
+      labels:
+        {{- include "monchart.labels" . | nindent 8 }}
+        app: {{ .Values.appName }}
+        tier: report
+    spec:
+      # 0 tentative supplementaire : c'est le cron lui-meme qui rejoue a la
+      # minute suivante. Evite d'empiler des pods en Error.
+      backoffLimit: {{ .Values.reportCronJob.backoffLimit }}
+      # Le job doit tenir dans sa minute (le script plafonne son attente
+      # d'Elasticsearch a 30 s).
+      activeDeadlineSeconds: {{ .Values.reportCronJob.activeDeadlineSeconds }}
+
+      template:
+        metadata:
+          labels:
+            {{- include "monchart.labels" . | nindent 12 }}
+            app: {{ .Values.appName }}
+            tier: report
+
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+
+          # fsGroup : c'est CE tier qui ecrit sur le volume partage.
+          securityContext:
+            {{- toYaml .Values.reportCronJob.podSecurityContext | nindent 12 }}
+
+          containers:
+            - name: report-container
+              image: "{{ required ".Values.reportCronJob.image.repository entry is required!" .Values.reportCronJob.image.repository }}:{{ required ".Values.reportCronJob.image.tag entry is required!" .Values.reportCronJob.image.tag }}"
+              imagePullPolicy: {{ .Values.reportCronJob.image.pullPolicy }}
+
+              command: ["/bin/sh", "/scripts/report.sh"]
+
+              env:
+                - name: ES_HOST
+                  value: "{{ include "monchart.elasticsearchServiceName" . }}.{{ .Release.Namespace }}.svc.cluster.local"
+                - name: ES_PORT
+                  value: "{{ .Values.elasticsearch.restPort }}"
+                - name: ES_INDEX
+                  value: {{ .Values.reportCronJob.indexName | quote }}
+                - name: REPORT_DIR
+                  value: {{ .Values.storage.reports.mountPath | quote }}
+                - name: KEEP_REPORTS
+                  value: {{ required ".Values.reportCronJob.keepReports entry is required!" .Values.reportCronJob.keepReports | quote }}
+                # Nom du pod : injecte explicitement (ne pas compter sur
+                # $HOSTNAME, qui n'est pas garanti par le runtime).
+                - name: POD_NAME
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.name
+
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+                  readOnly: true
+                # Volume partage, en ECRITURE cette fois.
+                - name: reports
+                  mountPath: {{ .Values.storage.reports.mountPath }}
+
+              securityContext:
+                {{- toYaml .Values.reportCronJob.securityContext | nindent 16 }}
+
+              resources:
+                {{- toYaml .Values.reportCronJob.resources | nindent 16 }}
+
+          volumes:
+            - name: scripts
+              configMap:
+                name: configmap-report-script
+                defaultMode: 0555
+            - name: reports
+              persistentVolumeClaim:
+                claimName: pvc-reports
+{{- end }}

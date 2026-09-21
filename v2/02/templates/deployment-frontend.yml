@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment-frontend
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "monchart.labels" . | nindent 4 }}
+    tier: frontend
+
+spec:
+  replicas: {{ required ".Values.frontend.replicaCount entry is required!" .Values.frontend.replicaCount }}
+  revisionHistoryLimit: 3
+
+  # Ces labels doivent correspondre EXACTEMENT a ceux du pod template
+  # (spec.template.metadata.labels), sinon l'API refuse le Deployment.
+  selector:
+    matchLabels:
+      app: {{ required ".Values.appName entry is required!" .Values.appName }}
+      tier: frontend
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+      maxSurge: 25%
+
+  template:
+    metadata:
+      labels:
+        {{- include "monchart.labels" . | nindent 8 }}
+        app: {{ .Values.appName }}
+        tier: frontend
+      annotations:
+        # Force le redemarrage des pods quand la configuration nginx change
+        # (un ConfigMap monte en volume n'est pas recharge par nginx).
+        checksum/configmap-frontend: {{ include (print $.Template.BasePath "/configmap-frontend.yaml") . | sha256sum }}
+
+    spec:
+      # Aucun pod de ce chart n'appelle l'API Kubernetes : pas de token monte.
+      automountServiceAccountToken: false
+
+      # --- Pod Security Standards "restricted" (niveau pod) ---
+      securityContext:
+        {{- toYaml .Values.frontend.podSecurityContext | nindent 8 }}
+
+      containers:
+        - name: frontend-container
+          image: "{{ required ".Values.frontend.image.repository entry is required!" .Values.frontend.image.repository }}:{{ required ".Values.frontend.image.tag entry is required!" .Values.frontend.image.tag }}"
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+
+          ports:
+            - name: http
+              containerPort: {{ .Values.frontend.containerPort }}
+              protocol: TCP
+
+          envFrom:
+            - configMapRef:
+                name: configmap-myapp
+            - secretRef:
+                name: secret-myapp
+
+          volumeMounts:
+            # La configuration nginx remplace tout /etc/nginx/conf.d
+            - name: nginx-conf
+              mountPath: /etc/nginx/conf.d
+              readOnly: true
+            - name: nginx-html
+              mountPath: /usr/share/nginx/html
+              readOnly: true
+
+          # --- Pod Security Standards "restricted" (niveau conteneur) ---
+          securityContext:
+            {{- toYaml .Values.frontend.securityContext | nindent 12 }}
+
+          resources:
+            {{- toYaml .Values.frontend.resources | nindent 12 }}
+
+          # Demarrage : laisse jusqu'a 60 s a nginx avant de compter les echecs
+          # de liveness.
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+            failureThreshold: 12
+
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 30
+            failureThreshold: 3
+            timeoutSeconds: 3
+
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+            failureThreshold: 3
+            timeoutSeconds: 3
+
+      volumes:
+        - name: nginx-conf
+          configMap:
+            name: configmap-frontend
+            items:
+              - key: default.conf
+                path: default.conf
+        - name: nginx-html
+          configMap:
+            name: configmap-frontend
+            items:
+              - key: index.html
+                path: index.html

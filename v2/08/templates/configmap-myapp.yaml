@@ -1,0 +1,14 @@
+# Configuration applicative commune aux tiers frontend et backend.
+# Injectee comme variables d'environnement (envFrom) : verifiable avec
+#   kubectl exec deploy/deployment-frontend -- env | sort
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: configmap-myapp
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "monchart.labels" . | nindent 4 }}
+data:
+  APPID: "{{ required ".Values.appId entry is required!" .Values.appId }}"
+  APP_VERSION: {{ .Chart.AppVersion | quote }}
+  ES_URL: "http://{{ include "monchart.elasticsearchServiceName" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.elasticsearch.restPort }}"

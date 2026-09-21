@@ -1,0 +1,272 @@
+# =============================================================================
+#  monchart - valeurs par defaut
+# =============================================================================
+#  SEUL fichier de valeurs du chart : il decrit un deploiement QUI FONCTIONNE,
+#  la reference "initial" des TP de troubleshooting.
+#  Installation : helm upgrade --install monchart . -n <prenom>-tshoot
+#
+#  Contraintes :
+#   - aucune image custom : tout est public (Docker Hub / docker.elastic.co)
+#   - compatible Pod Security Standards "restricted" en mode enforce
+#   - pas d'Ingress ni d'HTTPRoute : exposition via NodePort uniquement
+#
+#     NodePort --> frontend (nginx) --/api/--> backend (nginx)
+#                                                  |  lecture
+#                                                  v
+#                                           pvc-reports (RWX)
+#                                                  ^  ecriture chaque minute
+#                                           cronjob-report --> elasticsearch
+# =============================================================================
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Label applicatif pose sur les PODS de tous les tiers (avec "tier: <nom>").
+# C'est lui qui fait le lien Service <-> Pod et Deployment <-> Pod.
+# Pour lister toutes les ressources d'un tier : kubectl get all -l tier=frontend
+# ATTENTION : ce label finit dans spec.selector des Deployments et du
+# StatefulSet, champ IMMUABLE. Le changer sur une release deja installee fait
+# echouer "helm upgrade" (field is immutable).
+appName: MyApp
+
+# Configuration applicative (ConfigMap configmap-myapp)
+appId: 42
+
+# Secret applicatif (Secret secret-myapp).
+# Dans un vrai projet, cette valeur serait sortie d'ici et chiffree (sops).
+password: qwertz
+
+# -----------------------------------------------------------------------------
+# Stockage
+# -----------------------------------------------------------------------------
+storage:
+  # Volume partage : ecrit par le CronJob, lu par les pods du tier backend.
+  # Il DOIT etre ReadWriteMany : plusieurs pods, potentiellement sur des noeuds
+  # differents, le montent en meme temps.
+  reports:
+    accessMode: ReadWriteMany
+    size: 1Gi
+    # Vide ("") = StorageClass par defaut du cluster.
+    #
+    # PREREQUIS : le CronJob ecrit a la racine de ce volume en non-root. Il faut
+    # donc que cette racine soit inscriptible, ce qui suppose soit un CSIDriver
+    # en fsGroupPolicy=File (fsGroup applique), soit un provisionneur qui cree
+    # la racine accessible en ecriture. Verification :
+    #   kubectl get csidriver -o custom-columns=NAME:.metadata.name,FSGROUP:.spec.fsGroupPolicy
+    # Le script du CronJob teste ce point et affiche un diagnostic explicite.
+    storageClassName: "longhorn"
+    mountPath: /data
+  # Donnees d'Elasticsearch (volumeClaimTemplates du StatefulSet), RWO.
+  elasticsearch:
+    size: 2Gi
+    storageClassName: "longhorn"
+
+# -----------------------------------------------------------------------------
+# Tier frontend : nginx qui sert une page HTML et proxifie /api/ vers le backend
+# -----------------------------------------------------------------------------
+frontend:
+  replicaCount: 2
+
+  image:
+    # Variante "unprivileged" de nginx : tourne en UID 101 et ecoute sur 8080.
+    # L'image nginx standard demarre en root et ecoute sur le port 80 : elle
+    # serait refusee dans un namespace "restricted".
+    repository: nginxinc/nginx-unprivileged
+    tag: "1.27-alpine"
+    pullPolicy: IfNotPresent
+
+  containerPort: 8080
+
+  service:
+    type: NodePort
+    port: 80
+    # Vide = le cluster choisit un port libre dans 30000-32767.
+    nodePort: ""
+
+  resources:
+    requests:
+      memory: "32M"
+      cpu: "50m"
+      ephemeral-storage: "128M"
+    limits:
+      memory: "128M"
+      cpu: "300m"
+      ephemeral-storage: "512M"
+
+  # --- Pod Security Standards "restricted", niveau pod ---
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 101          # utilisateur "nginx" de l'image unprivileged
+    runAsGroup: 101
+    seccompProfile:
+      type: RuntimeDefault
+  # --- Pod Security Standards "restricted", niveau conteneur ---
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false   # nginx ecrit dans /tmp et /var/cache/nginx
+    capabilities:
+      drop:
+        - ALL
+
+# -----------------------------------------------------------------------------
+# Tier backend : nginx qui expose le volume RWX partage sous /reports/
+# -----------------------------------------------------------------------------
+backend:
+  replicaCount: 2
+
+  image:
+    repository: nginxinc/nginx-unprivileged
+    tag: "1.27-alpine"
+    pullPolicy: IfNotPresent
+
+  containerPort: 8080
+
+  service:
+    # Le backend n'est pas expose sur les noeuds : seul le frontend l'appelle,
+    # par le nom DNS du Service (qui resout vers son ClusterIP). Pour le
+    # joindre depuis un poste de travail :
+    #   kubectl port-forward svc/service-backend-clusterip 8080:80
+    type: ClusterIP
+    port: 80
+
+  resources:
+    requests:
+      memory: "32M"
+      cpu: "50m"
+      ephemeral-storage: "128M"
+    limits:
+      memory: "128M"
+      cpu: "300m"
+      ephemeral-storage: "512M"
+
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 101
+    runAsGroup: 101
+    # Ce tier ne fait que LIRE le volume partage. On met le meme fsGroup que le
+    # CronJob pour que les deux tiers demandent la meme propriete de volume a
+    # kubelet et ne se la reprennent pas mutuellement.
+    fsGroup: 2000
+    fsGroupChangePolicy: OnRootMismatch
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+
+# -----------------------------------------------------------------------------
+# Elasticsearch : StatefulSet d'UN seul pod (mono-noeud)
+# -----------------------------------------------------------------------------
+elasticsearch:
+  enabled: true
+  replicaCount: 1
+
+  image:
+    repository: docker.elastic.co/elasticsearch/elasticsearch
+    tag: "8.15.3"
+    pullPolicy: IfNotPresent
+
+  restPort: 9200
+  interNodePort: 9300
+
+  clusterName: "formation-troubleshooting"
+  # Heap JVM : environ un tiers de la limite memoire du conteneur. Le reste sert
+  # au hors-heap (buffers reseau, Lucene, metaspace). Ne jamais depasser la
+  # moitie de la limite, sous peine d'OOMKilled.
+  javaOpts: "-Xms512m -Xmx512m"
+
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "200m"
+      ephemeral-storage: "512M"
+    limits:
+      memory: "1536Mi"
+      cpu: "1000m"
+      # Marge confortable : Elasticsearch ecrit ses logs applicatifs et ses logs
+      # de GC dans le conteneur (donc dans le stockage ephemere).
+      ephemeral-storage: "2Gi"
+
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000         # utilisateur "elasticsearch" de l'image officielle
+    runAsGroup: 1000
+    # Permet a l'UID 1000 d'ecrire dans son volume sans initContainer privilegie
+    # (le "chown -R" habituel est interdit en "restricted").
+    fsGroup: 1000
+    fsGroupChangePolicy: OnRootMismatch
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+
+# -----------------------------------------------------------------------------
+# CronJob : ecrit un rapport sur le volume RWX toutes les minutes
+# -----------------------------------------------------------------------------
+reportCronJob:
+  enabled: true
+  schedule: "*/1 * * * *"
+
+  image:
+    repository: curlimages/curl
+    tag: "8.11.1"
+    pullPolicy: IfNotPresent
+
+  # Index Elasticsearch alimente par le job.
+  indexName: "Formation-Reports"
+  # Nombre de rapports conserves sur le volume (rotation). Entier >= 1.
+  keepReports: 20
+
+  # Historique des jobs conserve par le controleur.
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  # Chaque execution doit tenir dans sa minute : le script plafonne son attente
+  # d'Elasticsearch a 30 s, ce deadline est le garde-fou.
+  activeDeadlineSeconds: 50
+  # Pas de nouvelle tentative dans le job : c'est le cron qui rejoue a la minute
+  # suivante (evite d'empiler des pods en Error).
+  backoffLimit: 0
+  # Inferieur a la periode : pas de rattrapage d'une occurrence en retard.
+  startingDeadlineSeconds: 45
+
+  resources:
+    requests:
+      memory: "16M"
+      cpu: "50m"
+      ephemeral-storage: "64M"
+    limits:
+      memory: "64M"
+      cpu: "200m"
+      ephemeral-storage: "128M"
+
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 65534        # "nobody"
+    runAsGroup: 65534
+    # C'est CE tier qui ECRIT : c'est lui qui a besoin du droit d'ecriture a la
+    # racine du volume partage. Doit rester identique au fsGroup du backend.
+    fsGroup: 2000
+    fsGroupChangePolicy: OnRootMismatch
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+
+# Pod "helm test <release>" : verifie la chaine complete en une commande.
+tests:
+  enabled: true
+  image:
+    repository: curlimages/curl
+    tag: "8.11.1"
+    pullPolicy: IfNotPresent

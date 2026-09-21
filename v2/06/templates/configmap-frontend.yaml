@@ -1,0 +1,212 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: configmap-frontend
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "monchart.labels" . | nindent 4 }}
+data:
+  # ---------------------------------------------------------------------------
+  # Configuration nginx du tier frontend
+  # ---------------------------------------------------------------------------
+  default.conf: |
+    # nginx-unprivileged tourne en UID 101 : impossible d'ecouter sous 1024.
+    server {
+        listen       {{ .Values.frontend.containerPort }};
+        server_name  _;
+
+        charset utf-8;
+        root  /usr/share/nginx/html;
+        index index.html;
+
+        # SSI : injecte le nom du pod dans la page HTML ($hostname = nom du pod).
+        ssi on;
+
+        # Quel pod a repondu ? (curl -i, ou onglet "Network" du navigateur)
+        add_header X-Tier     frontend  always;
+        add_header X-Pod-Name $hostname always;
+
+        # Sondes liveness / readiness : aucune dependance externe, sinon une
+        # panne du backend ferait redemarrer le frontend en boucle.
+        location = /healthz {
+            access_log off;
+            default_type text/plain;
+            return 200 "ok\n";
+        }
+
+        location = /whoami {
+            default_type text/plain;
+            return 200 "tier: frontend\npod:  $hostname\n";
+        }
+
+        # Tout /api/ est proxifie vers le tier backend.
+        # nginx ne resout le nom de son upstream qu'AU DEMARRAGE : il refuse de
+        # demarrer si le Service backend n'existe pas ou est mal nomme
+        # ("host not found in upstream"). En revanche, si le Service existe mais
+        # n'a aucun Endpoint, nginx demarre et renvoie 502, remappe ci-dessous
+        # en 503 "backend indisponible".
+        location /api/ {
+            proxy_pass         http://{{ include "monchart.backendServiceName" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.backend.service.port }}/;
+            proxy_http_version 1.1;
+            proxy_set_header   Host            $host;
+            proxy_set_header   X-Real-IP       $remote_addr;
+            proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_connect_timeout 3s;
+            proxy_send_timeout    5s;
+            proxy_read_timeout    5s;
+
+            # Message lisible plutot qu'une 502 nue quand le backend est KO.
+            error_page 502 503 504 = @backend_down;
+        }
+
+        location @backend_down {
+            default_type text/plain;
+            return 503 "backend indisponible (vu depuis le pod frontend $hostname)\n";
+        }
+    }
+
+  # ---------------------------------------------------------------------------
+  # Page d'accueil : montre l'etat de la chaine frontend -> backend -> volume
+  # ---------------------------------------------------------------------------
+  index.html: |
+    <!doctype html>
+    <html lang="fr">
+    <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Formation Kubernetes - TP troubleshooting</title>
+    <style>
+      :root { --bg:#0f172a; --card:#1e293b; --line:#334155; --txt:#e2e8f0;
+              --muted:#94a3b8; --ok:#22c55e; --ko:#ef4444; --wait:#f59e0b; --accent:#38bdf8; }
+      * { box-sizing:border-box; }
+      body { margin:0; background:var(--bg); color:var(--txt);
+             font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+      header { padding:22px 16px; border-bottom:1px solid var(--line); }
+      header div.wrap, main { max-width:880px; margin:0 auto; }
+      h1 { margin:0 0 6px; font-size:19px; }
+      h2 { margin:0 0 12px; font-size:14px; text-transform:uppercase;
+           letter-spacing:.06em; color:var(--muted); }
+      main { padding:16px; display:grid; grid-template-columns:minmax(0,1fr); gap:14px; }
+      .card { background:var(--card); border:1px solid var(--line);
+              border-radius:10px; padding:16px; min-width:0; }
+      .row { display:flex; align-items:center; gap:10px; font-size:14px; padding:4px 0;
+             min-width:0; overflow-wrap:anywhere; }
+      .dot { width:10px; height:10px; border-radius:50%; background:var(--wait); flex:none; }
+      .dot.ok { background:var(--ok); }
+      .dot.ko { background:var(--ko); }
+      code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+      /* Le rapport contient une tres longue ligne JSON (cluster health) :
+         on l'enroule, sinon elle etire toute la page horizontalement. */
+      pre { margin:10px 0 0; padding:12px; background:#0b1220; color:#cbd5e1;
+            border-radius:8px; font-size:12.5px; max-height:240px; overflow-y:auto;
+            white-space:pre-wrap; overflow-wrap:anywhere; }
+      a { color:var(--accent); text-decoration:none; }
+      a:hover { text-decoration:underline; }
+      .pill { display:inline-block; padding:2px 8px; border-radius:999px;
+              background:#0b1220; border:1px solid var(--line); font-size:12px; color:var(--muted); }
+      footer { padding:20px; text-align:center; color:var(--muted); font-size:12px; }
+    </style>
+    </head>
+    <body>
+    <header><div class="wrap">
+      <h1>Formation Kubernetes &mdash; TP troubleshooting</h1>
+      <div class="pill">tier frontend</div>
+      <div class="pill">pod <!--# echo var="hostname" default="inconnu" --></div>
+    </div></header>
+
+    <main>
+      <section class="card">
+        <h2>Etat de la chaine applicative</h2>
+        <div class="row"><span class="dot ok"></span><span>frontend (nginx) &mdash; cette page</span></div>
+        <div class="row"><span class="dot" id="dot-api"></span><span id="txt-api">backend : verification&hellip;</span></div>
+        <div class="row"><span class="dot" id="dot-rep"></span><span id="txt-rep">rapport du CronJob : verification&hellip;</span></div>
+        <div class="row"><span class="dot" id="dot-es"></span><span id="txt-es">elasticsearch : verification&hellip;</span></div>
+      </section>
+
+      <section class="card">
+        <h2>Dernier rapport ecrit sur le volume partage (RWX)</h2>
+        <pre id="report">chargement&hellip;</pre>
+        <div style="margin-top:10px">
+          <a href="/api/reports/">tous les rapports</a> &middot;
+          <a href="/api/reports/latest.txt">dernier rapport (brut)</a> &middot;
+          <a href="/whoami">whoami</a>
+        </div>
+      </section>
+
+      <footer>
+        Le CronJob ecrit un rapport chaque minute sur le volume ReadWriteMany,
+        le tier backend le sert sous <code>/reports/</code>.
+      </footer>
+    </main>
+
+    <script>
+    function setState(id, ok, label) {
+      var dot = document.getElementById("dot-" + id);
+      var txt = document.getElementById("txt-" + id);
+      dot.className = "dot " + (ok ? "ok" : "ko");
+      txt.textContent = label;
+    }
+
+    async function refresh() {
+      // 1) backend, via le reverse-proxy /api/ du frontend
+      try {
+        var r = await fetch("/api/whoami", { cache: "no-store" });
+        var body = await r.text();
+        if (r.ok) {
+          var pod = (body.match(/pod:\s*(\S+)/) || [])[1] || "?";
+          setState("api", true, "backend : joignable (pod " + pod + ")");
+        } else if (r.status === 503) {
+          // 503 = le proxy nginx n'a obtenu aucune reponse du Service backend
+          setState("api", false, "backend : injoignable (503, aucun endpoint dans le Service backend ?)");
+        } else {
+          setState("api", false, "backend : erreur HTTP " + r.status);
+        }
+      } catch (e) {
+        setState("api", false, "backend : requete impossible (" + e + ")");
+      }
+
+      // 2) dernier rapport ecrit par le CronJob sur le volume RWX
+      try {
+        var r2 = await fetch("/api/reports/latest.txt", { cache: "no-store" });
+        if (!r2.ok) throw new Error(String(r2.status));
+        var report = await r2.text();
+        document.getElementById("report").textContent = report;
+
+        var m = report.match(/date\s*:\s*(\S+)/);
+        var ageMin = null;
+        if (m) ageMin = (Date.now() - Date.parse(m[1])) / 60000;
+        var frais = ageMin !== null && ageMin < 5;
+        setState("rep", frais, frais
+          ? "rapport du CronJob : " + m[1] + " (il y a " + ageMin.toFixed(1) + " min)"
+          : m
+            ? "rapport du CronJob : PERIME (" + m[1] + ", il y a " + ageMin.toFixed(0) + " min)"
+            : "rapport du CronJob : illisible");
+
+        // 3) sante du cluster Elasticsearch, telle que vue par le CronJob.
+        //    On ne se fie a cette information que si le rapport est FRAIS :
+        //    sinon on afficherait l'etat d'Elasticsearch tel qu'il etait la
+        //    derniere fois que le CronJob a reussi a ecrire.
+        var es = report.match(/"status"\s*:\s*"(\w+)"/);
+        if (!frais) {
+          setState("es", false, "elasticsearch : etat inconnu (le rapport n'est plus a jour)");
+        } else if (es) {
+          setState("es", es[1] !== "red", "elasticsearch : cluster " + es[1]);
+        } else if (/cluster health\s*:\s*indisponible/.test(report)) {
+          setState("es", false, "elasticsearch : injoignable depuis le CronJob");
+        } else {
+          setState("es", false, "elasticsearch : etat inconnu (voir le rapport)");
+        }
+      } catch (e) {
+        document.getElementById("report").textContent =
+          "aucun rapport lisible : le CronJob n'a peut-etre jamais tourne, " +
+          "ou le volume n'est pas monte dans le backend.";
+        setState("rep", false, "rapport du CronJob : absent");
+        setState("es", false, "elasticsearch : etat inconnu");
+      }
+    }
+
+    refresh();
+    setInterval(refresh, 15000);
+    </script>
+    </body>
+    </html>

@@ -1,0 +1,30 @@
+{{- if .Values.elasticsearch.enabled }}
+# Service headless (clusterIP: None) : il ne fait pas de repartition de charge,
+# il donne un nom DNS a chaque pod du StatefulSet
+#   statefulset-elasticsearch-0.service-elasticsearch.<namespace>.svc.cluster.local
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "monchart.elasticsearchServiceName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "monchart.labels" . | nindent 4 }}
+    tier: elasticsearch
+spec:
+  clusterIP: None
+  # Le nom DNS du pod reste resolvable meme quand le pod n'est pas "Ready"
+  # (pratique pour diagnostiquer un Elasticsearch qui demarre mal).
+  publishNotReadyAddresses: true
+  ports:
+    - name: rest
+      protocol: TCP
+      port: {{ .Values.elasticsearch.restPort }}
+      targetPort: rest
+    - name: inter-node
+      protocol: TCP
+      port: {{ .Values.elasticsearch.interNodePort }}
+      targetPort: inter-node
+  selector:
+    app: {{ required ".Values.appName entry is required!" .Values.appName }}
+    tier: elasticsearch
+{{- end }}

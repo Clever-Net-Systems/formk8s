@@ -1,0 +1,24 @@
+# Volume partage entre le CronJob (ecriture) et les pods du tier backend
+# (lecture). Il doit etre ReadWriteMany : plusieurs pods, potentiellement sur
+# des noeuds differents, le montent simultanement.
+#
+#   kubectl get pvc pvc-reports
+#   kubectl describe pvc pvc-reports   # <- en cas de "Pending"
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-reports
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "monchart.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.storage.reports.accessMode }}
+  {{- if .Values.storage.reports.storageClassName }}
+  storageClassName: {{ .Values.storage.reports.storageClassName | quote }}
+  {{- else }}
+  # Pas de storageClassName : la StorageClass par defaut du cluster est utilisee.
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.reports.size }}

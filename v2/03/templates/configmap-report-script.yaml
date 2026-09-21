@@ -1,0 +1,149 @@
+# Script execute par le CronJob. Le sortir du CronJob permet de le lire (et de
+# le corriger) facilement :
+#   kubectl get cm configmap-report-script -o jsonpath='{.data.report\.sh}'
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: configmap-report-script
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "monchart.labels" . | nindent 4 }}
+data:
+  report.sh: |
+    #!/bin/sh
+    # Chaque minute :
+    #   - interroge Elasticsearch (une indisponibilite n'est pas fatale),
+    #   - ecrit un rapport sur le volume RWX partage avec le tier backend,
+    #   - indexe une trace dans Elasticsearch,
+    #   - fait tourner les anciens rapports.
+    set -eu
+
+    ES_URL="http://${ES_HOST}:${ES_PORT}"
+    START="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+    CURL="curl --silent --show-error --connect-timeout 3 --max-time 10"
+
+    echo "=== rapport ${START} (job ${POD_NAME}) ==="
+
+    # -------------------------------------------------------------------------
+    # 0) Le volume partage est-il accessible en ECRITURE ?
+    #    On teste avec "mkdir" : creer une entree NEUVE exige toujours le droit
+    #    d'ecriture sur le repertoire. Un "touch" sur un fichier deja present
+    #    (residu d'une execution precedente) reussirait sans ce droit et
+    #    donnerait un faux positif.
+    # -------------------------------------------------------------------------
+    WTEST="${REPORT_DIR}/.write-test.$$"
+    if ! mkdir "${WTEST}" 2>/dev/null; then
+      echo "ERREUR : impossible d'ecrire dans ${REPORT_DIR}."
+      echo "         UID/GID du conteneur : $(id -u):$(id -g), groupes : $(id -G)"
+      echo "         Droits du point de montage :"
+      ls -ld "${REPORT_DIR}" || true
+      echo "         Espace disponible :"
+      df -h "${REPORT_DIR}" || true
+      echo "         Pistes : volume plein (voir ci-dessus), ou bien :"
+      echo "         - fsGroup du pod absent, ou different de celui du tier backend ;"
+      echo "         - driver CSI qui ignore fsGroup sur un volume ReadWriteMany :"
+      echo "           kubectl get csidriver -o custom-columns=NAME:.metadata.name,FSGROUP:.spec.fsGroupPolicy"
+      echo "           (fsGroupPolicy=ReadWriteOnceWithFSType => fsGroup ignore sur un PVC RWX)"
+      exit 1
+    fi
+    rmdir "${WTEST}" || true
+
+    # KEEP_REPORTS doit etre un entier >= 1 : "set -u" ne protege que contre une
+    # variable NON DEFINIE. Avec une valeur vide ou non numerique, $((K + 1))
+    # vaut 1 sans erreur, et "tail -n +1" supprimerait TOUS les rapports.
+    case "${KEEP_REPORTS}" in
+      ''|*[!0-9]*)
+        echo "ERREUR : KEEP_REPORTS='${KEEP_REPORTS}' n'est pas un entier"
+        echo "         (valeur du chart : reportCronJob.keepReports)"
+        exit 1 ;;
+    esac
+    [ "${KEEP_REPORTS}" -ge 1 ] || { echo "ERREUR : KEEP_REPORTS doit valoir au moins 1"; exit 1; }
+
+    # -------------------------------------------------------------------------
+    # 1) Elasticsearch. On attend au maximum 30 s (--retry-max-time) pour que le
+    #    job tienne dans sa minute. Une indisponibilite n'est PAS fatale : le
+    #    rapport est quand meme ecrit et le cron rejoue a la minute suivante.
+    #    C'est ce qui permet au volume d'etre alimente des la premiere minute,
+    #    pendant que le StatefulSet Elasticsearch demarre encore.
+    # -------------------------------------------------------------------------
+    WAIT_START="$(date +%s)"
+    if $CURL --fail --retry 5 --retry-delay 3 --retry-max-time 30 --retry-all-errors \
+             --output /dev/null "${ES_URL}/_cluster/health?wait_for_status=yellow&timeout=5s"; then
+      ES_OK=1
+    else
+      ES_OK=0
+      echo "AVERTISSEMENT : Elasticsearch injoignable sur ${ES_URL}"
+      echo "                -> rapport ecrit sans les donnees Elasticsearch"
+    fi
+    WAITED="$(( $(date +%s) - WAIT_START ))"
+
+    HEALTH="indisponible"
+    COUNT="indisponible"
+    if [ "${ES_OK}" -eq 1 ]; then
+      # Creation de l'index si besoin. number_of_replicas=0 : sur un cluster
+      # mono-noeud, une replique ne peut pas etre assignee et le cluster
+      # resterait "yellow" en permanence.
+      # 2>/dev/null : un index absent renvoie 404, ce n'est pas une erreur ici.
+      if ! $CURL --fail --output /dev/null "${ES_URL}/${ES_INDEX}" 2>/dev/null; then
+        echo "-> creation de l'index ${ES_INDEX}"
+        $CURL --fail --request PUT "${ES_URL}/${ES_INDEX}" \
+              --header 'Content-Type: application/json' \
+              --data '{"settings":{"number_of_shards":1,"number_of_replicas":0}}' \
+              --output /dev/null
+      fi
+      HEALTH="$($CURL --fail "${ES_URL}/_cluster/health" || echo 'requete en echec')"
+      COUNT="$($CURL --fail "${ES_URL}/${ES_INDEX}/_count" || echo 'requete en echec')"
+    fi
+
+    # -------------------------------------------------------------------------
+    # 2) Rapport sur le volume partage (servi par le backend sous /reports/).
+    #    L'horodatage et le nom du fichier sont calcules ici, cote a cote, pour
+    #    qu'ils ne puissent pas diverger (l'attente d'Elasticsearch ci-dessus
+    #    peut durer une trentaine de secondes).
+    # -------------------------------------------------------------------------
+    STAMP="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+    REPORT="${REPORT_DIR}/report-$(date -u '+%Y%m%d-%H%M%S').txt"
+
+    # "set -e" N'INTERROMPT PAS le script quand la redirection d'une commande
+    # COMPOSEE echoue (verifie sur busybox ash). Sans ce "if", un volume plein
+    # produirait un rapport tronque publie dans latest.txt, en sortant en 0.
+    if ! { echo "date          : ${STAMP}"
+           echo "job           : ${POD_NAME}"
+           echo "attente ES    : ${WAITED}s"
+           echo "elasticsearch : ${ES_URL}"
+           echo "index         : ${ES_INDEX}"
+           echo "cluster health: ${HEALTH}"
+           echo "documents     : ${COUNT}   (avant ce run)"
+         } > "${REPORT}"; then
+      echo "ERREUR : ecriture de ${REPORT} impossible (droits ? volume plein ?)"
+      df -h "${REPORT_DIR}" || true
+      exit 1
+    fi
+    [ -s "${REPORT}" ] || { echo "ERREUR : ${REPORT} est vide (volume plein ?)"; exit 1; }
+
+    # Publication atomique de latest.txt : le backend ne sert jamais un fichier
+    # tronque (les fichiers caches ne sont pas listes par l'autoindex nginx).
+    cp "${REPORT}" "${REPORT_DIR}/.latest.tmp"
+    mv "${REPORT_DIR}/.latest.tmp" "${REPORT_DIR}/latest.txt"
+    echo "-> rapport ecrit : ${REPORT}"
+
+    # -------------------------------------------------------------------------
+    # 3) Trace dans Elasticsearch
+    # -------------------------------------------------------------------------
+    if [ "${ES_OK}" -eq 1 ]; then
+      $CURL --fail --request POST "${ES_URL}/${ES_INDEX}/_doc" \
+            --header 'Content-Type: application/json' \
+            --data "{\"@timestamp\":\"${STAMP}\",\"job\":\"${POD_NAME}\",\"report\":\"${REPORT##*/}\"}" \
+            --output /dev/null
+      echo "-> document indexe dans ${ES_INDEX}"
+    fi
+
+    # -------------------------------------------------------------------------
+    # 4) Rotation : le volume est petit, on ne garde que les derniers rapports.
+    # -------------------------------------------------------------------------
+    ls -1t "${REPORT_DIR}"/report-*.txt 2>/dev/null | tail -n "+$((KEEP_REPORTS + 1))" | while read -r f; do
+      rm -f "$f"
+      echo "-> rotation : suppression de ${f}"
+    done
+
+    echo "=== termine ==="

@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1160" height="860" viewBox="0 0 1160 860" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif">
+  <defs>
+    <marker id="fleche" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
+    </marker>
+  </defs>
+
+  <rect width="1160" height="860" fill="#ffffff"/>
+  <text x="50" y="42" font-size="20" font-weight="600" fill="#0f172a">Application de formation - interactions entre composants</text>
+  <text x="50" y="64" font-size="13" fill="#64748b">3 tiers + un traitement par lot ; seul le frontend est expose, par NodePort</text>
+
+  <!-- acteurs -->
+  <rect x="90" y="86" width="230" height="52" rx="8" fill="#f1f5f9" stroke="#64748b" stroke-width="1.5"/>
+  <text x="205" y="108" font-size="13.5" font-weight="600" fill="#0f172a" text-anchor="middle">navigateur</text>
+  <text x="205" y="126" font-size="11" fill="#475569" text-anchor="middle">page d'etat de la chaine</text>
+
+  <rect x="610" y="86" width="250" height="52" rx="8" fill="#f1f5f9" stroke="#64748b" stroke-width="1.5"/>
+  <text x="735" y="108" font-size="13.5" font-weight="600" fill="#0f172a" text-anchor="middle">poste de travail</text>
+  <text x="735" y="126" font-size="11" fill="#475569" text-anchor="middle">kubectl port-forward</text>
+
+  <!-- namespace -->
+  <rect x="50" y="176" width="1060" height="590" rx="14" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="7 5"/>
+  <text x="465" y="200" font-size="12.5" font-weight="600" fill="#475569" text-anchor="middle">namespace &lt;prenom&gt;-tshoot</text>
+  <text x="465" y="218" font-size="11.5" fill="#94a3b8" text-anchor="middle">Pod Security Admission : enforce = restricted</text>
+
+  <!-- services frontend / backend -->
+  <rect x="90" y="240" width="230" height="64" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+  <text x="205" y="264" font-size="13" font-weight="600" fill="#14532d" text-anchor="middle">service-frontend-nodeport</text>
+  <text x="205" y="282" font-size="11" fill="#166534" text-anchor="middle">NodePort 80 -&gt; 8080</text>
+  <text x="205" y="296" font-size="10.5" fill="#15803d" text-anchor="middle">selecteur app=MyApp, tier=frontend</text>
+
+  <rect x="610" y="240" width="250" height="64" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+  <text x="735" y="264" font-size="13" font-weight="600" fill="#14532d" text-anchor="middle">service-backend-clusterip</text>
+  <text x="735" y="282" font-size="11" fill="#166534" text-anchor="middle">ClusterIP 80 -&gt; 8080, interne au cluster</text>
+  <text x="735" y="296" font-size="10.5" fill="#15803d" text-anchor="middle">selecteur app=MyApp, tier=backend</text>
+
+  <!-- deployments -->
+  <rect x="90" y="336" width="230" height="92" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="205" y="360" font-size="13.5" font-weight="600" fill="#1e3a8a" text-anchor="middle">deployment-frontend</text>
+  <text x="205" y="379" font-size="11" fill="#1d4ed8" text-anchor="middle">nginx non-root - 2 replicas</text>
+  <text x="205" y="396" font-size="10.5" fill="#1e40af" text-anchor="middle">page HTML + reverse-proxy /api/</text>
+  <text x="205" y="413" font-size="10.5" fill="#64748b" text-anchor="middle">UID 101 - port 8080</text>
+
+  <rect x="610" y="336" width="250" height="92" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="735" y="360" font-size="13.5" font-weight="600" fill="#1e3a8a" text-anchor="middle">deployment-backend</text>
+  <text x="735" y="379" font-size="11" fill="#1d4ed8" text-anchor="middle">nginx non-root - 2 replicas</text>
+  <text x="735" y="396" font-size="10.5" fill="#1e40af" text-anchor="middle">sert /reports/ - readiness sur /reports/</text>
+  <text x="735" y="413" font-size="10.5" fill="#64748b" text-anchor="middle">UID 101 - port 8080</text>
+
+  <!-- cronjob et volume partage -->
+  <rect x="90" y="486" width="230" height="80" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="205" y="510" font-size="13.5" font-weight="600" fill="#1e3a8a" text-anchor="middle">cronjob-report</text>
+  <text x="205" y="529" font-size="11" fill="#1d4ed8" text-anchor="middle">toutes les minutes - image curl</text>
+  <text x="205" y="546" font-size="10.5" fill="#64748b" text-anchor="middle">UID 65534 - fsGroup 2000</text>
+
+  <rect x="610" y="486" width="250" height="80" rx="8" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+  <text x="735" y="510" font-size="13.5" font-weight="600" fill="#78350f" text-anchor="middle">pvc-reports</text>
+  <text x="735" y="529" font-size="11" fill="#b45309" text-anchor="middle">volume partage ReadWriteMany</text>
+  <text x="735" y="546" font-size="10.5" fill="#92400e" text-anchor="middle">report-*.txt et latest.txt</text>
+
+  <!-- elasticsearch -->
+  <rect x="90" y="622" width="230" height="64" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+  <text x="205" y="646" font-size="13" font-weight="600" fill="#14532d" text-anchor="middle">service-elasticsearch</text>
+  <text x="205" y="664" font-size="11" fill="#166534" text-anchor="middle">headless - clusterIP: None</text>
+  <text x="205" y="678" font-size="10.5" fill="#15803d" text-anchor="middle">ports 9200 / 9300</text>
+
+  <rect x="610" y="614" width="250" height="80" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="735" y="638" font-size="13.5" font-weight="600" fill="#1e3a8a" text-anchor="middle">statefulset-elasticsearch</text>
+  <text x="735" y="657" font-size="11" fill="#1d4ed8" text-anchor="middle">1 pod - Elasticsearch 8.15</text>
+  <text x="735" y="674" font-size="10.5" fill="#64748b" text-anchor="middle">UID 1000 - fsGroup 1000</text>
+
+  <rect x="900" y="620" width="180" height="68" rx="8" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+  <text x="990" y="644" font-size="12.5" font-weight="600" fill="#78350f" text-anchor="middle">data-statefulset-</text>
+  <text x="990" y="660" font-size="12.5" font-weight="600" fill="#78350f" text-anchor="middle">elasticsearch-0</text>
+  <text x="990" y="678" font-size="10.5" fill="#92400e" text-anchor="middle">ReadWriteOnce</text>
+
+  <!-- fleches -->
+  <path d="M 205 138 L 205 236" stroke="#475569" stroke-width="1.8" fill="none" marker-end="url(#fleche)"/>
+  <text x="215" y="172" font-size="11" fill="#475569">NodePort</text>
+
+  <path d="M 205 304 L 205 332" stroke="#475569" stroke-width="1.8" fill="none" marker-end="url(#fleche)"/>
+
+  <path d="M 735 138 L 735 236" stroke="#475569" stroke-width="1.8" stroke-dasharray="5 4" fill="none" marker-end="url(#fleche)"/>
+  <text x="745" y="156" font-size="11" fill="#475569">port-forward</text>
+  <text x="745" y="170" font-size="11" fill="#475569">8080:80</text>
+
+  <path d="M 735 304 L 735 332" stroke="#475569" stroke-width="1.8" fill="none" marker-end="url(#fleche)"/>
+
+  <path d="M 320 372 L 465 372 L 465 272 L 606 272" stroke="#475569" stroke-width="1.8" fill="none" marker-end="url(#fleche)"/>
+  <text x="474" y="322" font-size="11.5" font-weight="600" fill="#334155">/api/</text>
+  <text x="474" y="338" font-size="10.5" fill="#64748b">proxy HTTP</text>
+
+  <path d="M 735 428 L 735 482" stroke="#475569" stroke-width="1.8" fill="none" marker-end="url(#fleche)"/>
+  <text x="745" y="460" font-size="11" fill="#475569">lecture seule</text>
+
+  <path d="M 320 526 L 606 526" stroke="#475569" stroke-width="1.8" fill="none" marker-end="url(#fleche)"/>
+  <text x="463" y="516" font-size="11" fill="#475569" text-anchor="middle">ecrit chaque minute</text>
+
+  <path d="M 205 566 L 205 618" stroke="#475569" stroke-width="1.8" fill="none" marker-end="url(#fleche)"/>
+  <text x="215" y="596" font-size="11" fill="#475569">indexe un document</text>
+
+  <path d="M 320 654 L 606 654" stroke="#475569" stroke-width="1.8" fill="none" marker-end="url(#fleche)"/>
+
+  <path d="M 860 654 L 896 654" stroke="#475569" stroke-width="1.8" fill="none" marker-end="url(#fleche)"/>
+
+  <!-- legende -->
+  <rect x="90" y="792" width="14" height="14" rx="3" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="112" y="804" font-size="11.5" fill="#475569">charge de travail (Deployment, StatefulSet, CronJob)</text>
+  <rect x="470" y="792" width="14" height="14" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+  <text x="492" y="804" font-size="11.5" fill="#475569">Service</text>
+  <rect x="590" y="792" width="14" height="14" rx="3" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+  <text x="612" y="804" font-size="11.5" fill="#475569">volume persistant (PVC)</text>
+  <rect x="790" y="792" width="14" height="14" rx="3" fill="#f1f5f9" stroke="#64748b" stroke-width="1.5"/>
+  <text x="812" y="804" font-size="11.5" fill="#475569">client, hors du cluster</text>
+</svg>

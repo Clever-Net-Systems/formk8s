@@ -1,0 +1,54 @@
+# Job de maintenance ajoute par l'equipe applicative : purge des rapports de
+# plus de 30 jours sur le volume partage.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job-purge
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "monchart.labels" . | nindent 4 }}
+    tier: maintenance
+spec:
+  backoffLimit: 2
+  template:
+    metadata:
+      labels:
+        {{- include "monchart.labels" . | nindent 8 }}
+        app: {{ .Values.appName }}
+        tier: maintenance
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsUser: 0
+      containers:
+        - name: purge-container
+          image: "{{ .Values.reportCronJob.image.repository }}:{{ .Values.reportCronJob.image.tag }}"
+          imagePullPolicy: {{ .Values.reportCronJob.image.pullPolicy }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "purge des rapports de plus de 30 jours"
+              find "$REPORT_DIR" -name 'report-*.txt' -mtime +30 -print -delete
+              echo "purge terminee"
+          env:
+            - name: REPORT_DIR
+              value: {{ .Values.storage.reports.mountPath | quote }}
+          securityContext:
+            allowPrivilegeEscalation: true
+          volumeMounts:
+            - name: reports
+              mountPath: {{ .Values.storage.reports.mountPath }}
+          resources:
+            requests:
+              memory: "16M"
+              cpu: "50m"
+              ephemeral-storage: "64M"
+            limits:
+              memory: "64M"
+              cpu: "200m"
+              ephemeral-storage: "128M"
+      volumes:
+        - name: reports
+          persistentVolumeClaim:
+            claimName: pvc-reports

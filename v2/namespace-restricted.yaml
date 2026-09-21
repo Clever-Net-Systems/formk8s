@@ -1,0 +1,23 @@
+# Namespace des TP de troubleshooting, avec Pod Security Admission en mode
+# "enforce: restricted" : tout pod qui ne respecte pas le profil restrictif est
+# REFUSE a l'admission (et pas seulement signale).
+#
+# A creer AVANT d'installer le chart :
+#   sed 's/<prenom>/antoine/' namespace-restricted.yaml | kubectl apply -f -
+#
+# Pour verifier le libelle applique :
+#   kubectl get ns <prenom>-tshoot --show-labels
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: <prenom>-tshoot
+  labels:
+    # enforce : les pods non conformes sont rejetes
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    # audit + warn : on garde en plus un message explicite dans les
+    # evenements et dans la sortie de kubectl (tres pratique en TP)
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: latest

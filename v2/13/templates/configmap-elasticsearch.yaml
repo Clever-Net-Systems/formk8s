@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: configmap-elasticsearch
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "monchart.labels" . | nindent 4 }}
+data:
+  # Ces cles sont injectees comme variables d'environnement (envFrom) :
+  # Elasticsearch accepte n'importe quel parametre d'elasticsearch.yml
+  # sous cette forme.
+  #
+  # A savoir : avec envFrom, kubelet IGNORE silencieusement les cles qui ne sont
+  # pas des noms de variables valides (il se contente d'un evenement
+  # InvalidEnvironmentVariableNames, visible avec "kubectl describe pod").
+  # Les points, tirets et underscores sont valides ; un espace ou un "/" non.
+  # Une faute de frappe ici ne produit donc pas d'erreur mais un Elasticsearch
+  # qui demarre avec ses valeurs par defaut... et qui echoue plus loin.
+
+  # Un seul noeud : pas d'election de master, et les "bootstrap checks"
+  # de production sont desactives.
+  discovery.type: "single-node"
+  cluster.name: {{ .Values.elasticsearch.clusterName | quote }}
+
+  # Securite desactivee : pas de mot de passe ni de TLS a gerer en formation.
+  xpack.security.enabled: "false"
+  xpack.security.enrollment.enabled: "false"
+  # Machine learning inutile ici (et gourmand en memoire).
+  xpack.ml.enabled: "false"
+
+  # mmap desactive : sinon Elasticsearch exige vm.max_map_count=262144 sur
+  # l'hote, ce qui imposerait un initContainer privilegie... interdit dans un
+  # namespace "restricted".
+  node.store.allow_mmap: "false"
+  # Verrouillage memoire : necessiterait la capability IPC_LOCK.
+  bootstrap.memory_lock: "false"
+  # Pas de telechargement de la base GeoIP au demarrage (cluster sans acces
+  # internet, et demarrage plus rapide).
+  ingest.geoip.downloader.enabled: "false"
+
+  # Seuils de disque de la plateforme, exprimes en espace libre restant sur le
+  # volume de donnees (valeurs absolues, independantes de la taille du volume) :
+  #   low        : plus aucun nouveau shard n'est alloue sur le noeud
+  #   high       : Elasticsearch essaie de deplacer des shards ailleurs
+  #   flood_stage: les index passent en LECTURE SEULE (blocage automatiquement
+  #                leve des que l'espace libre repasse au-dessus de "high")
+  cluster.routing.allocation.disk.watermark.low: "512mb"
+  cluster.routing.allocation.disk.watermark.high: "256mb"
+  cluster.routing.allocation.disk.watermark.flood_stage: "128mb"
+
+  ES_JAVA_OPTS: {{ .Values.elasticsearch.javaOpts | quote }}

@@ -1,0 +1,98 @@
+{{- if .Values.tests.enabled }}
+# Pod de test execute par "helm test <release> --logs".
+# Il verifie toute la chaine : frontend -> backend -> volume RWX -> elasticsearch.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-test-connection
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "monchart.labels" . | nindent 4 }}
+    tier: test
+  annotations:
+    helm.sh/hook: test
+    # Le pod est conserve en cas d'echec, pour pouvoir lire ses logs.
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    runAsGroup: 65534
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: curl
+      image: "{{ .Values.tests.image.repository }}:{{ .Values.tests.image.tag }}"
+      imagePullPolicy: {{ .Values.tests.image.pullPolicy }}
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+            - ALL
+      resources:
+        requests:
+          memory: "16M"
+          cpu: "10m"
+          ephemeral-storage: "32M"
+        limits:
+          memory: "64M"
+          cpu: "100m"
+          ephemeral-storage: "64M"
+      env:
+        - name: FRONTEND
+          value: "http://service-frontend-nodeport:{{ .Values.frontend.service.port }}"
+        - name: BACKEND
+          value: "http://{{ include "monchart.backendServiceName" . }}:{{ .Values.backend.service.port }}"
+        - name: ES
+          value: "http://{{ include "monchart.elasticsearchServiceName" . }}:{{ .Values.elasticsearch.restPort }}"
+      command: ["/bin/sh", "-c"]
+      args:
+        - |
+          set -eu
+          C="curl --silent --show-error --fail --connect-timeout 3 --max-time 10 --retry 5 --retry-delay 5 --retry-all-errors"
+
+          echo "1/7 frontend  $FRONTEND/healthz"
+          $C "$FRONTEND/healthz"
+
+          echo "2/7 frontend  page d'accueil"
+          $C --output /dev/null "$FRONTEND/"
+
+          echo "3/7 backend   via le reverse-proxy du frontend"
+          $C "$FRONTEND/api/whoami"
+
+          echo "4/7 backend   en direct"
+          $C "$BACKEND/whoami"
+
+          echo "5/7 volume    listing $BACKEND/reports/"
+          $C --output /dev/null "$BACKEND/reports/"
+          echo "    ok"
+          {{- if .Values.elasticsearch.enabled }}
+
+          echo "6/7 elasticsearch  $ES/_cluster/health"
+          $C "$ES/_cluster/health"
+          echo ""
+          {{- else }}
+
+          echo "6/7 elasticsearch  desactive (elasticsearch.enabled=false)"
+          {{- end }}
+          {{- if .Values.reportCronJob.enabled }}
+
+          echo "7/7 dernier rapport du CronJob"
+          if $C "$BACKEND/reports/latest.txt"; then
+            echo "    ok"
+          else
+            echo "    AVERTISSEMENT : aucun rapport pour le moment."
+            echo "    Normal dans la premiere minute qui suit l'installation ;"
+            echo "    sinon, verifier : kubectl get jobs -l tier=report"
+          fi
+          {{- else }}
+
+          echo "7/7 CronJob desactive (reportCronJob.enabled=false)"
+          {{- end }}
+
+          echo ""
+          echo "=== tous les tests essentiels sont passes ==="
+{{- end }}

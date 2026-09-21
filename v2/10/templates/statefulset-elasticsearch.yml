@@ -1,0 +1,130 @@
+{{- if .Values.elasticsearch.enabled }}
+# Elasticsearch mono-noeud.
+#
+# Un StatefulSet (et pas un Deployment) car :
+#   - le pod a une identite stable : statefulset-elasticsearch-0
+#   - son volume de donnees est cree par volumeClaimTemplates et re-attache au
+#     meme pod a chaque redemarrage.
+#
+# ATTENTION : les PVC crees par volumeClaimTemplates ne sont PAS supprimes par
+# "helm uninstall". Voir le README pour le nettoyage.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: statefulset-elasticsearch
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "monchart.labels" . | nindent 4 }}
+    tier: elasticsearch
+
+spec:
+  # Service headless qui donne le nom DNS stable du pod.
+  serviceName: {{ include "monchart.elasticsearchServiceName" . }}
+  replicas: {{ .Values.elasticsearch.replicaCount }}
+  revisionHistoryLimit: 3
+  updateStrategy:
+    type: RollingUpdate
+
+  selector:
+    matchLabels:
+      app: {{ required ".Values.appName entry is required!" .Values.appName }}
+      tier: elasticsearch
+
+  template:
+    metadata:
+      labels:
+        {{- include "monchart.labels" . | nindent 8 }}
+        app: {{ .Values.appName }}
+        tier: elasticsearch
+      annotations:
+        checksum/configmap-elasticsearch: {{ include (print $.Template.BasePath "/configmap-elasticsearch.yaml") . | sha256sum }}
+
+    spec:
+      # Aucun pod de ce chart n'appelle l'API Kubernetes : pas de token monte.
+      automountServiceAccountToken: false
+      # Elasticsearch a besoin de temps pour fermer proprement ses shards.
+      terminationGracePeriodSeconds: 60
+
+      # Pas d'initContainer "chown -R" ni "sysctl -w vm.max_map_count" : ils
+      # exigeraient des conteneurs privilegies, interdits en "restricted".
+      # A la place :
+      #   - fsGroup: 1000       -> le volume devient accessible a l'UID 1000
+      #   - node.store.allow_mmap: false (ConfigMap) -> plus besoin de mmap
+      securityContext:
+        {{- toYaml .Values.elasticsearch.podSecurityContext | nindent 8 }}
+
+      containers:
+        - name: elasticsearch-container
+          image: "{{ required ".Values.elasticsearch.image.repository entry is required!" .Values.elasticsearch.image.repository }}:{{ required ".Values.elasticsearch.image.tag entry is required!" .Values.elasticsearch.image.tag }}"
+          imagePullPolicy: {{ .Values.elasticsearch.image.pullPolicy }}
+
+          ports:
+            - name: rest
+              containerPort: {{ .Values.elasticsearch.restPort }}
+              protocol: TCP
+            - name: inter-node
+              containerPort: {{ .Values.elasticsearch.interNodePort }}
+              protocol: TCP
+
+          envFrom:
+            - configMapRef:
+                name: configmap-elasticsearch
+          env:
+            - name: node.name
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+
+          volumeMounts:
+            - name: data
+              mountPath: /usr/share/elasticsearch/data
+
+          securityContext:
+            {{- toYaml .Values.elasticsearch.securityContext | nindent 12 }}
+
+          resources:
+            {{- toYaml .Values.elasticsearch.resources | nindent 12 }}
+
+          # La JVM met 20 a 60 s a demarrer : on laisse 2 min 30 au startup
+          # avant que liveness/readiness ne prennent le relais.
+          startupProbe:
+            httpGet:
+              path: /_cluster/health?local=true
+              port: rest
+            periodSeconds: 5
+            failureThreshold: 30
+            timeoutSeconds: 3
+
+          readinessProbe:
+            httpGet:
+              path: /_cluster/health?local=true
+              port: rest
+            periodSeconds: 10
+            failureThreshold: 3
+            timeoutSeconds: 3
+
+          livenessProbe:
+            tcpSocket:
+              port: rest
+            periodSeconds: 30
+            failureThreshold: 3
+
+  # Le PVC "data-statefulset-elasticsearch-0" est cree automatiquement.
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          app: {{ .Values.appName }}
+          tier: elasticsearch
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        {{- if .Values.storage.elasticsearch.storageClassName }}
+        storageClassName: {{ .Values.storage.elasticsearch.storageClassName | quote }}
+        {{- end }}
+        resources:
+          requests:
+            # Attention : la taille d'un volumeClaimTemplates n'est pas
+            # modifiable apres creation du StatefulSet.
+            storage: {{ .Values.storage.elasticsearch.size }}
+{{- end }}

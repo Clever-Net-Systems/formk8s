@@ -1,0 +1,123 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment-backend
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "monchart.labels" . | nindent 4 }}
+    tier: backend
+
+spec:
+  replicas: {{ required ".Values.backend.replicaCount entry is required!" .Values.backend.replicaCount }}
+  revisionHistoryLimit: 3
+
+  selector:
+    matchLabels:
+      app: {{ required ".Values.appName entry is required!" .Values.appName }}
+      tier: backend
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+      maxSurge: 25%
+
+  template:
+    metadata:
+      labels:
+        {{- include "monchart.labels" . | nindent 8 }}
+        app: {{ .Values.appName }}
+        tier: backend
+      annotations:
+        checksum/configmap-backend: {{ include (print $.Template.BasePath "/configmap-backend.yaml") . | sha256sum }}
+
+    spec:
+      # Aucun pod de ce chart n'appelle l'API Kubernetes : pas de token monte.
+      automountServiceAccountToken: false
+
+      # fsGroup applique au volume RWX : c'est ce qui permet a nginx (UID 101)
+      # de lire des fichiers ecrits par le CronJob (UID 65534).
+      securityContext:
+        {{- toYaml .Values.backend.podSecurityContext | nindent 8 }}
+
+      containers:
+        - name: backend-container
+          image: "{{ required ".Values.backend.image.repository entry is required!" .Values.backend.image.repository }}:{{ required ".Values.backend.image.tag entry is required!" .Values.backend.image.tag }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+
+          ports:
+            - name: http
+              containerPort: {{ .Values.backend.containerPort }}
+              protocol: TCP
+
+          envFrom:
+            - configMapRef:
+                name: configmap-myapp
+            - secretRef:
+                name: secret-myapp
+
+          volumeMounts:
+            - name: nginx-conf
+              mountPath: /etc/nginx/conf.d
+              readOnly: true
+            - name: nginx-html
+              mountPath: /usr/share/nginx/html
+              readOnly: true
+            # Volume partage (RWX) : monte en lecture seule, seul le CronJob ecrit.
+            - name: reports
+              mountPath: {{ .Values.storage.reports.mountPath }}
+              readOnly: true
+
+          securityContext:
+            {{- toYaml .Values.backend.securityContext | nindent 12 }}
+
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+            failureThreshold: 12
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 30
+            failureThreshold: 3
+            timeoutSeconds: 3
+
+          # La readiness passe par /reports/, donc par le volume partage :
+          #   - point de montage absent du conteneur (volumeMount supprime, ou
+          #     mountPath qui ne correspond plus a l'alias nginx) -> 404
+          #   - montage illisible (fsGroup) -> 403
+          # Dans les deux cas : pod "Running" mais "0/1 Ready", retire du
+          # Service. A ne pas confondre avec un volume qui ne se monte pas du
+          # tout : le pod reste alors bloque AVANT Running
+          # (Pending/ContainerCreating + evenement FailedMount).
+          readinessProbe:
+            httpGet:
+              path: /reports/
+              port: http
+            periodSeconds: 10
+            failureThreshold: 3
+            timeoutSeconds: 3
+
+      volumes:
+        - name: nginx-conf
+          configMap:
+            name: configmap-backend
+            items:
+              - key: default.conf
+                path: default.conf
+        - name: nginx-html
+          configMap:
+            name: configmap-backend
+            items:
+              - key: index.html
+                path: index.html
+        - name: reports
+          persistentVolumeClaim:
+            claimName: pvc-reports

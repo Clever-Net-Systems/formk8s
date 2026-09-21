@@ -1,0 +1,94 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: configmap-backend
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "monchart.labels" . | nindent 4 }}
+data:
+  # ---------------------------------------------------------------------------
+  # Configuration nginx du tier backend
+  # ---------------------------------------------------------------------------
+  default.conf: |
+    server {
+        listen       {{ .Values.backend.containerPort }};
+        server_name  _;
+
+        charset utf-8;
+        root  /usr/share/nginx/html;
+        index index.html;
+        ssi on;
+
+        add_header X-Tier     backend   always;
+        add_header X-Pod-Name $hostname always;
+
+        # Sonde liveness / startup : nginx repond, sans dependance externe.
+        location = /healthz {
+            access_log off;
+            default_type text/plain;
+            return 200 "ok\n";
+        }
+
+        location = /whoami {
+            default_type text/plain;
+            return 200 "tier: backend\npod:  $hostname\n";
+        }
+
+        # Rapports ecrits par le CronJob sur le volume ReadWriteMany.
+        # Cette URL sert aussi de sonde readiness : si le repertoire
+        # {{ .Values.storage.reports.mountPath }} n'est pas present dans le
+        # conteneur, nginx repond 404 ; s'il est present mais illisible, 403.
+        # Dans les deux cas le pod devient "Running mais 0/1 Ready" et sort du
+        # Service. (Un volume qui ne se monte pas du tout, lui, bloque le pod
+        # AVANT Running : Pending/ContainerCreating + evenement FailedMount.)
+        location /reports/ {
+            alias {{ .Values.storage.reports.mountPath }}/;
+            autoindex on;
+            # Horodatage en UTC dans le listing, comme dans les rapports :
+            # "autoindex_localtime on" afficherait l'heure locale du noeud et
+            # laisserait croire a un decalage d'horloge.
+            autoindex_localtime off;
+            # Les rapports sont du texte : on les affiche dans le navigateur.
+            default_type text/plain;
+        }
+    }
+
+  # ---------------------------------------------------------------------------
+  # Petite page d'accueil du backend (utile quand on tape directement le
+  # NodePort du backend, sans passer par le frontend).
+  # ---------------------------------------------------------------------------
+  index.html: |
+    <!doctype html>
+    <html lang="fr">
+    <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>backend - formation troubleshooting</title>
+    <style>
+      body { margin:0; padding:28px; background:#0f172a; color:#e2e8f0;
+             font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+      .box { max-width:720px; margin:0 auto; background:#1e293b; border:1px solid #334155;
+             border-radius:10px; padding:20px; }
+      h1 { margin:0 0 4px; font-size:18px; }
+      .muted { color:#94a3b8; font-size:13px; }
+      ul { line-height:1.9; }
+      a { color:#38bdf8; }
+      code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+    </style>
+    </head>
+    <body>
+      <div class="box">
+        <h1>tier backend</h1>
+        <div class="muted">pod <code><!--# echo var="hostname" default="inconnu" --></code></div>
+        <!-- Liens RELATIFS : cette page est servie a la fois sur le NodePort du
+             backend (racine /) et a travers le proxy du frontend (/api/). Des
+             chemins absolus renverraient des 404 dans le second cas. -->
+        <ul>
+          <li><a href="reports/">reports/</a> &mdash; rapports du CronJob (volume RWX)</li>
+          <li><a href="reports/latest.txt">reports/latest.txt</a> &mdash; dernier rapport</li>
+          <li><a href="healthz">healthz</a> &mdash; sonde de sante</li>
+          <li><a href="whoami">whoami</a> &mdash; identite du pod</li>
+        </ul>
+      </div>
+    </body>
+    </html>

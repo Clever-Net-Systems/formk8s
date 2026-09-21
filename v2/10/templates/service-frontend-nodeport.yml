@@ -1,0 +1,26 @@
+# Exposition du tier frontend sur un port de chaque noeud (30000-32767).
+#   kubectl get svc service-frontend-nodeport
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "monchart.frontendServiceName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "monchart.labels" . | nindent 4 }}
+    tier: frontend
+spec:
+  type: {{ .Values.frontend.service.type }}
+  ports:
+    - name: http
+      protocol: TCP
+      port: {{ .Values.frontend.service.port }}
+      # Port du conteneur, reference par son nom (cf. deployment-frontend).
+      targetPort: http
+      {{- if .Values.frontend.service.nodePort }}
+      nodePort: {{ .Values.frontend.service.nodePort }}
+      {{- end }}
+  # Ces labels doivent correspondre a ceux des pods, sinon le Service n'a aucun
+  # Endpoint :  kubectl get endpoints service-frontend-nodeport
+  selector:
+    app: {{ required ".Values.appName entry is required!" .Values.appName }}
+    tier: frontend

@@ -1,0 +1,65 @@
+# Import ponctuel d'un jeu de donnees sur le volume partage, livre par
+# l'equipe data. Il ecrit un fichier jusqu'a ce que le volume soit plein.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job-import-dump
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "monchart.labels" . | nindent 4 }}
+    tier: import
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        {{- include "monchart.labels" . | nindent 8 }}
+        app: {{ .Values.appName }}
+        tier: import
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 2000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: import-container
+          image: "{{ .Values.reportCronJob.image.repository }}:{{ .Values.reportCronJob.image.tag }}"
+          imagePullPolicy: {{ .Values.reportCronJob.image.pullPolicy }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "import du jeu de donnees dans $REPORT_DIR"
+              dd if=/dev/zero of="$REPORT_DIR/dump-import.bin" bs=1M 2>/dev/null || true
+              ls -lh "$REPORT_DIR"
+              df -h "$REPORT_DIR"
+              echo "import termine"
+          env:
+            - name: REPORT_DIR
+              value: {{ .Values.storage.reports.mountPath | quote }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: reports
+              mountPath: {{ .Values.storage.reports.mountPath }}
+          resources:
+            requests:
+              memory: "16M"
+              cpu: "50m"
+              ephemeral-storage: "64M"
+            limits:
+              memory: "64M"
+              cpu: "500m"
+              ephemeral-storage: "128M"
+      volumes:
+        - name: reports
+          persistentVolumeClaim:
+            claimName: pvc-reports

@@ -1,0 +1,86 @@
+==========================================================================
+ {{ .Chart.Name }}-{{ .Chart.Version }}  deploye !
+   release   : {{ .Release.Name }}
+   namespace : {{ .Release.Namespace }}
+==========================================================================
+
+   navigateur ==NodePort==> frontend (nginx)
+                                 |
+                                 |  reverse-proxy /api/
+                                 v
+   port-forward ===========> backend (nginx)
+                                 |  lecture
+                                 v
+                          pvc-reports  (volume RWX)
+                                 ^
+                                 |  ecriture toutes les minutes
+                          cronjob-report
+                                 |
+                                 v
+                          elasticsearch (StatefulSet, 1 pod)
+
+1) Attendre que tout soit pret. Dans cet ordre : le backend a besoin du volume,
+   le frontend proxifie le backend, et Elasticsearch met ~1 min a demarrer.
+
+   kubectl -n {{ .Release.Namespace }} rollout status deploy/deployment-backend --timeout=3m
+{{- if .Values.elasticsearch.enabled }}
+   kubectl -n {{ .Release.Namespace }} rollout status statefulset/statefulset-elasticsearch --timeout=5m
+{{- end }}
+   kubectl -n {{ .Release.Namespace }} rollout status deploy/deployment-frontend --timeout=3m
+   kubectl -n {{ .Release.Namespace }} get pods,svc,pvc
+
+2) Acceder a l'application :
+
+   export NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
+   export FRONTEND_PORT=$(kubectl -n {{ .Release.Namespace }} get svc {{ include "monchart.frontendServiceName" . }} -o jsonpath='{.spec.ports[0].nodePort}')
+
+   echo "frontend : http://$NODE_IP:$FRONTEND_PORT/"
+
+   curl -s http://$NODE_IP:$FRONTEND_PORT/whoami
+   curl -s http://$NODE_IP:$FRONTEND_PORT/api/reports/latest.txt
+
+   Le tier backend n'est pas expose sur les noeuds (Service ClusterIP) : seul
+   le frontend l'appelle. Pour le tester directement, ouvrir un tunnel depuis
+   le poste de travail :
+
+   kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "monchart.backendServiceName" . }} 8080:80
+   #  puis, dans un autre terminal ou dans le navigateur :
+   #  http://localhost:8080/reports/
+
+{{- if .Values.reportCronJob.enabled }}
+
+3) Suivre le CronJob (une execution par minute) :
+
+   kubectl -n {{ .Release.Namespace }} get cronjob cronjob-report
+   kubectl -n {{ .Release.Namespace }} get jobs -l tier=report
+   kubectl -n {{ .Release.Namespace }} logs -l tier=report --tail=-1
+
+   # Declencher une execution immediate :
+   kubectl -n {{ .Release.Namespace }} create job --from=cronjob/cronjob-report report-manuel-1
+{{- end }}
+
+4) Verifier la chaine complete automatiquement :
+
+   helm test {{ .Release.Name }} -n {{ .Release.Namespace }} --logs
+
+5) En cas de probleme, par ou commencer :
+
+   kubectl -n {{ .Release.Namespace }} get pods -o wide
+   kubectl -n {{ .Release.Namespace }} describe pod <pod>
+   kubectl -n {{ .Release.Namespace }} logs <pod> [-c <conteneur>] [--previous]
+   kubectl -n {{ .Release.Namespace }} describe pvc pvc-reports
+   kubectl -n {{ .Release.Namespace }} get events --sort-by=.lastTimestamp | tail -30
+
+   ATTENTION : si AUCUN pod n'apparait alors que le Deployment existe, c'est un
+   refus a l'admission (Pod Security "restricted"). Le message n'est pas sur le
+   pod (il n'existe pas) mais sur l'objet qui a essaye de le creer :
+
+   kubectl -n {{ .Release.Namespace }} describe rs -l tier=frontend | tail -20
+   kubectl -n {{ .Release.Namespace }} describe job -l tier=report | tail -20
+   kubectl -n {{ .Release.Namespace }} get deploy -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.conditions[?(@.type=="ReplicaFailure")].message}{"\n"}{end}'
+
+{{- if not .Values.elasticsearch.enabled }}
+
+ATTENTION : elasticsearch.enabled=false, le rapport du CronJob sera ecrit sans
+            les donnees Elasticsearch.
+{{- end }}
