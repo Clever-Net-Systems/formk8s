@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Panne** | directive nginx `autoindex_on;` au lieu de `autoindex on;` |
+| **Panne** | faute de frappe sur la directive `listen` (écrite `listn`) dans la configuration nginx du backend |
 | **Fichier(s) modifié(s)** | `templates/configmap-backend.yaml` |
 | **Symptôme attendu** | pods backend en `CrashLoopBackOff` |
 
@@ -10,14 +10,16 @@
 
 ## La panne injectée
 
-`templates/configmap-backend.yaml`, bloc `location /reports/` :
+`templates/configmap-backend.yaml`, première ligne du bloc `server` :
 
 ```diff
--            autoindex on;
-+            autoindex_on;
+     server {
+-        listen       8080;
++        listn        8080;
 ```
 
-`autoindex_on` n'est pas une directive nginx : le processus refuse de démarrer.
+`listn` n'existe pas : nginx refuse de lire sa configuration et sort
+immédiatement, avant même d'ouvrir un port.
 
 ## Démarche de diagnostic
 
@@ -29,7 +31,7 @@ kubectl -n <ns> get pods -l tier=backend
 # deployment-backend-7d9c45b8f-6ntcl    1/1     Running            0
 
 kubectl -n <ns> logs deployment-backend-6c8f4d9b7-2xqzt --previous --tail=10
-# nginx: [emerg] unknown directive "autoindex_on" in /etc/nginx/conf.d/default.conf:41
+# nginx: [emerg] unknown directive "listn" in /etc/nginx/conf.d/default.conf:2
 ```
 
 Le conteneur est mort : `kubectl logs` sans option affiche les logs du
@@ -50,10 +52,14 @@ contenu a bien été mis à jour dans leur volume. S'ils redémarraient maintena
 nginx relirait la configuration cassée et ils tomberaient à leur tour. Ils ne
 survivent que parce que nginx ne relit pas sa configuration tout seul.
 
-Le fichier est monté depuis le ConfigMap `configmap-backend` :
+Le message donne le fichier **et** la ligne. Ce fichier est monté depuis le
+ConfigMap `configmap-backend`, on va donc y lire la ligne 2 :
 
 ```bash
-kubectl -n <ns> get cm configmap-backend -o jsonpath='{.data.default\.conf}' | grep -n autoindex
+kubectl -n <ns> get cm configmap-backend -o jsonpath='{.data.default\.conf}' | sed -n '1,3p'
+# server {
+#         listn        8080;
+#         server_name  _;
 ```
 
 ## Correction

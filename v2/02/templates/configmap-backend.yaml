@@ -11,7 +11,7 @@ data:
   # ---------------------------------------------------------------------------
   default.conf: |
     server {
-        listen       {{ .Values.backend.containerPort }};
+        listn        {{ .Values.backend.containerPort }};
         server_name  _;
 
         charset utf-8;
@@ -43,7 +43,7 @@ data:
         # AVANT Running : Pending/ContainerCreating + evenement FailedMount.)
         location /reports/ {
             alias {{ .Values.storage.reports.mountPath }}/;
-            autoindex_on;
+            autoindex on;
             # Horodatage en UTC dans le listing, comme dans les rapports :
             # "autoindex_localtime on" afficherait l'heure locale du noeud et
             # laisserait croire a un decalage d'horloge.
