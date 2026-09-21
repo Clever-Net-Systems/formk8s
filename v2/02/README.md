@@ -15,9 +15,8 @@ helm upgrade --install monchart . -n <prenom>-tshoot
 
 ## Contexte
 
-Une modification de la configuration nginx du tier backend a été livrée.
-`helm upgrade` s'est terminé sans erreur, mais le déploiement ne se termine
-jamais.
+Une modification de la configuration nginx du tier backend a été livrée, mais
+le déploiement ne se termine jamais.
 
 ## Ce que vous devez constater
 

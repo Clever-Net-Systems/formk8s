@@ -15,9 +15,8 @@ helm upgrade --install monchart . -n <prenom>-tshoot
 
 ## Contexte
 
-Une mise à jour du tier frontend vient d'être livrée. `helm upgrade` s'est
-terminé sans erreur, mais le déploiement ne se termine jamais et la commande
-`kubectl rollout status` reste bloquée.
+Une mise à jour du tier frontend vient d'être livrée, mais le déploiement ne se
+termine jamais : `kubectl rollout status` reste bloquée.
 
 ## Ce que vous devez constater
 

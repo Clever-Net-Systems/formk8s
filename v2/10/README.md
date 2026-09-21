@@ -18,9 +18,8 @@ helm upgrade --install monchart . -n <prenom>-tshoot
 L'équipe applicative a livré un Job de maintenance (`job-purge`) qui doit
 nettoyer les vieux rapports sur le volume partagé.
 
-`helm upgrade` affiche `deployed`, le Job existe... mais il ne se passe
-strictement rien. Aucun pod n'apparaît, aucun log, aucun message d'erreur
-visible.
+Le Job existe bien dans le namespace... mais il ne se passe strictement rien.
+Aucun pod n'apparaît, aucun log, aucun message d'erreur visible.
 
 ## Ce que vous devez constater
 

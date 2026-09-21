@@ -151,6 +151,12 @@ helm upgrade --install monchart . -n <prenom>-tshoot
 helm upgrade --install monchart . -n <prenom>-tshoot
 ```
 
+On n'utilise volontairement ni `--wait` ni `--atomic` : avec ces options,
+`helm upgrade` attendrait que tout soit `Ready` et annulerait la livraison de
+lui-même, il n'y aurait plus rien à diagnostiquer. Une livraison cassée est
+donc toujours signalée `deployed` par Helm — c'est normal, et ce n'est jamais
+le symptôme.
+
 Le `README.md` du dossier donne le contexte, ce qu'il faut constater et des
 questions pour guider la recherche. Le `corrige.md` donne la panne exacte, la
 démarche de diagnostic pas a pas, la correction et un rappel théorique :
@@ -251,9 +257,9 @@ impose `seccompProfile`. D'où :
 
 ## Pièges connus (utiles en TP)
 
-* **Un pod refuse par Pod Security n'apparaît pas dans `kubectl get pods`.** Le
-  Deployment est accepté, `helm upgrade` affiche `deployed`, et c'est le
-  ReplicaSet (ou le Job) qui échoue : `kubectl describe rs -l tier=frontend`.
+* **Un pod refusé par Pod Security n'apparaît pas dans `kubectl get pods`.** Le
+  Deployment, lui, est accepté : c'est le ReplicaSet (ou le Job) qui échoue à
+  créer le pod. `kubectl describe rs -l tier=frontend`.
 * **`Running` mais `0/1 Ready` sur le backend** = problème de volume (404 si le
   montage est absent, 403 s'il est illisible). Un volume qui ne se monte pas du
   tout laisse le pod **avant** `Running` (`ContainerCreating` + `FailedMount`).

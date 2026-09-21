@@ -16,7 +16,7 @@ helm upgrade --install monchart . -n <prenom>-tshoot
 ## Contexte
 
 Le numéro d'application (`APPID`) doit passer de 42 à 99. La valeur a été
-changée dans `values.yaml` et `helm upgrade` s'est bien déroulé.
+changée dans `values.yaml`, puis livrée.
 
 Pourtant l'application continue d'utiliser 42.
 
