@@ -1,14 +1,14 @@
-# Corrige - exercice 2 : Le tier backend redemarre en boucle
+# Corrigé - exercice 2 : Le tier backend redémarre en boucle
 
 | | |
 |---|---|
 | **Panne** | directive nginx `autoindex_on;` au lieu de `autoindex on;` |
-| **Fichier(s) modifie(s)** | `templates/configmap-backend.yaml` |
-| **Symptome attendu** | pods backend en `CrashLoopBackOff` |
+| **Fichier(s) modifié(s)** | `templates/configmap-backend.yaml` |
+| **Symptôme attendu** | pods backend en `CrashLoopBackOff` |
 
-> A ne pas distribuer aux etudiants avant la fin de l'exercice.
+> À ne pas distribuer aux étudiants avant la fin de l'exercice.
 
-## La panne injectee
+## La panne injectée
 
 `templates/configmap-backend.yaml`, bloc `location /reports/` :
 
@@ -17,9 +17,9 @@
 +            autoindex_on;
 ```
 
-`autoindex_on` n'est pas une directive nginx : le processus refuse de demarrer.
+`autoindex_on` n'est pas une directive nginx : le processus refuse de démarrer.
 
-## Demarche de diagnostic
+## Démarche de diagnostic
 
 ```bash
 kubectl -n <ns> get pods -l tier=backend
@@ -31,10 +31,10 @@ kubectl -n <ns> logs -l tier=backend --previous --tail=10
 ```
 
 Le conteneur est mort : `kubectl logs` sans option affiche les logs du
-conteneur *courant* (qui vient peut-etre de redemarrer et n'a rien ecrit).
-`--previous` affiche ceux de l'instance precedente, celle qui a plante.
+conteneur *courant* (qui vient peut-être de redémarrer et n'a rien écrit).
+`--previous` affiche ceux de l'instance précédente, celle qui a planté.
 
-Le fichier est monte depuis le ConfigMap `configmap-backend` :
+Le fichier est monté depuis le ConfigMap `configmap-backend` :
 
 ```bash
 kubectl -n <ns> get cm configmap-backend -o jsonpath='{.data.default\.conf}' | grep -n autoindex
@@ -42,20 +42,20 @@ kubectl -n <ns> get cm configmap-backend -o jsonpath='{.data.default\.conf}' | g
 
 ## Correction
 
-Retablir `autoindex on;` dans `templates/configmap-backend.yaml`, puis
-`helm upgrade`. Les pods redemarrent tout seuls grace a l'annotation
+Rétablir `autoindex on;` dans `templates/configmap-backend.yaml`, puis
+`helm upgrade`. Les pods redémarrent tout seuls grâce à l'annotation
 `checksum/configmap-backend` du Deployment.
 
-## Rappel theorique
+## Rappel théorique
 
 * `CrashLoopBackOff` n'est pas une erreur en soi : c'est kubelet qui espace les
-  redemarrages (10 s, 20 s, 40 s... jusqu'a 5 min) d'un conteneur qui sort.
-* Reflexe : `kubectl logs --previous`, puis `kubectl describe pod` pour le code
+  redémarrages (10 s, 20 s, 40 s... jusqu'à 5 min) d'un conteneur qui sort.
+* Réflexe : `kubectl logs --previous`, puis `kubectl describe pod` pour le code
   de sortie (`Exit Code`) et la raison (`Reason`).
-* Un conteneur qui sort en erreur immediatement = probleme de configuration ou
-  de binaire ; un conteneur tue plus tard = plutot une sonde ou une limite.
+* Un conteneur qui sort en erreur immédiatement = problème de configuration ou
+  de binaire ; un conteneur tué plus tard = plutôt une sonde ou une limite.
 
 ---
 
-*Retour a l'etat sain : `diff -ru ../00-initial ../02` montre exactement
-ce qui a ete modifie.*
+*Retour à l'état sain : `diff -ru ../00-initial ../02` montre exactement
+ce qui a été modifié.*

@@ -1,9 +1,10 @@
-# Exercice 1 - Le deploiement ne se termine jamais
+# Exercice 1 - Le déploiement ne se termine jamais
 
 | | |
 |---|---|
-| **Difficulte** | *.... |
-| **Duree indicative** | 10 min |
+| **Difficulté** | *.... |
+| **Durée indicative** | 10 min |
+| **Chart** | copie de `v2/00-initial` avec une panne introduite |
 
 ## Mise en place
 
@@ -14,28 +15,28 @@ helm upgrade --install monchart . -n <prenom>-tshoot
 
 ## Contexte
 
-Une mise a jour du tier frontend vient d'etre livree. `helm upgrade` s'est
-termine sans erreur, mais le deploiement ne se termine jamais et la commande
-`kubectl rollout status` reste bloquee.
+Une mise à jour du tier frontend vient d'être livrée. `helm upgrade` s'est
+terminé sans erreur, mais le déploiement ne se termine jamais et la commande
+`kubectl rollout status` reste bloquée.
 
 ## Ce que vous devez constater
 
 * `kubectl rollout status deploy/deployment-frontend` ne rend pas la main
-* de nouveaux pods frontend apparaissent, mais ne demarrent pas
-* le site continue pourtant de repondre
+* de nouveaux pods frontend apparaissent, mais ne démarrent pas
+* le site continue pourtant de répondre
 
 ## Votre mission
 
-Identifier pourquoi les nouveaux pods ne demarrent pas, et corriger le chart.
+Identifier pourquoi les nouveaux pods ne démarrent pas, et corriger le chart.
 
 ## Questions pour vous guider
 
-* Dans quel etat sont les nouveaux pods ? Depuis combien de temps ?
-* Ou trouve-t-on la raison exacte pour laquelle un conteneur ne demarre pas,
-  quand il n'a jamais demarre ? (indice : ce n'est pas `kubectl logs`)
-* Pourquoi le site repond-il encore alors que les nouveaux pods sont en echec ?
+* Dans quel état sont les nouveaux pods ? Depuis combien de temps ?
+* Où trouve-t-on la raison exacte pour laquelle un conteneur ne démarre pas,
+  quand il n'à jamais démarre ? (indice : ce n'est pas `kubectl logs`)
+* Pourquoi le site répond-il encore alors que les nouveaux pods sont en échec ?
 
-## Critere de reussite
+## Critère de réussite
 
 `kubectl get pods -l tier=frontend` montre uniquement des pods `Running 1/1`,
 et `kubectl rollout status deploy/deployment-frontend` rend la main.
@@ -43,4 +44,4 @@ et `kubectl rollout status deploy/deployment-frontend` rend la main.
 ---
 
 *Le fichier `corrige.md` de ce dossier contient la solution : ne l'ouvrez
-qu'apres avoir trouve, ou si vous etes vraiment bloque.*
+qu'après avoir trouvé, ou si vous êtes vraiment bloqué.*

@@ -1,17 +1,16 @@
-# monchart - chart de reference des TP de troubleshooting
+# monchart - chart de référence des TP de troubleshooting
 
-Chart Helm **volontairement sain** : c'est la version qui fonctionne, celle a
-laquelle on compare les versions cassees (`../1`, `../2`, ...).
+Chart Helm **volontairement sain** : c'est la version qui fonctionne, celle à laquelle on compare les versions cassées (`../1`, `../2`, ...).
 
-**La description complete du deploiement (architecture, role de chaque tier,
-objets crees, prerequis, choix lies au namespace `restricted`, pieges connus)
+**La description complète du déploiement (architecture, rôle de chaque tier,
+objets créés, prérequis, choix liés au namespace `restricted`, pièges connus)
 est dans [`../README.md`](../README.md).**
 
 ## Fichiers
 
-| Fichier | Role |
+| Fichier | Rôle |
 |---|---|
-| `values.yaml` | **le seul** fichier de valeurs, deja fonctionnel tel quel |
+| `values.yaml` | **le seul** fichier de valeurs, déjà fonctionnel tel quel |
 | `templates/` | 4 charges de travail, 3 Services, 1 PVC, 5 ConfigMap/Secret, 1 test |
 
 ## Installation

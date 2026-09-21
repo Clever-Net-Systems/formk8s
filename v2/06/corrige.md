@@ -1,14 +1,14 @@
-# Corrige - exercice 6 : Le backend est en bonne sante mais injoignable
+# Corrigé - exercice 6 : Le backend est en bonne santé mais injoignable
 
 | | |
 |---|---|
-| **Panne** | selecteur du Service backend passe a `tier: backends` |
-| **Fichier(s) modifie(s)** | `templates/service-backend-clusterip.yml` |
-| **Symptome attendu** | `endpoints service-backend-clusterip` vide, 503 sur le frontend |
+| **Panne** | sélecteur du Service backend passé à `tier: backends` |
+| **Fichier(s) modifié(s)** | `templates/service-backend-clusterip.yml` |
+| **Symptôme attendu** | `endpoints service-backend-clusterip` vide, 503 sur le frontend |
 
-> A ne pas distribuer aux etudiants avant la fin de l'exercice.
+> À ne pas distribuer aux étudiants avant la fin de l'exercice.
 
-## La panne injectee
+## La panne injectée
 
 `templates/service-backend-clusterip.yml` :
 
@@ -19,7 +19,7 @@
 +    tier: backends
 ```
 
-## Demarche de diagnostic
+## Démarche de diagnostic
 
 ```bash
 kubectl -n <ns> get endpoints service-backend-clusterip
@@ -27,10 +27,10 @@ kubectl -n <ns> get endpoints service-backend-clusterip
 # service-backend-clusterip   <none>      1h
 ```
 
-`<none>` est le symptome : le Service ne "voit" aucun pod. Un Service ne
-connait pas les Deployments, il ne connait qu'un **selecteur de labels**.
+`<none>` est le symptôme : le Service ne "voit" aucun pod. Un Service ne
+connaît pas les Deployments, il ne connaît qu'un **sélecteur de labels**.
 
-`kubectl port-forward` echoue pour la meme raison, et le dit explicitement :
+`kubectl port-forward` échoue pour la même raison, et le dit explicitement :
 `error: no selectable pods found for service`.
 
 ```bash
@@ -45,25 +45,25 @@ aucune destination pour le trafic.
 
 ## Correction
 
-Retablir `tier: backend` dans le selecteur du Service, puis `helm upgrade`.
-L'effet est immediat, sans redemarrage de pod : le controleur d'Endpoints
+Rétablir `tier: backend` dans le sélecteur du Service, puis `helm upgrade`.
+L'effet est immédiat, sans redémarrage de pod : le contrôleur d'Endpoints
 recalcule la liste en permanence.
 
-## Rappel theorique
+## Rappel théorique
 
-* Chaine complete : `Service.spec.selector` -> `EndpointSlice`/`Endpoints` ->
-  regles kube-proxy sur chaque noeud -> pod.
-* Un Endpoint n'apparait que si le pod correspond au selecteur **et** est
-  `Ready` : un selecteur correct mais une readiness KO donne le meme `<none>`.
-* Pourquoi avoir casse le selecteur du Service, et pas le label des pods ?
+* Chaîne complète : `Service.spec.selector` -> `EndpointSlice`/`Endpoints` ->
+  règles kube-proxy sur chaque noeud -> pod.
+* Un Endpoint n'apparaît que si le pod correspond au sélecteur **et** est
+  `Ready` : un sélecteur correct mais une readiness KO donne le même `<none>`.
+* Pourquoi avoir cassé le sélecteur du Service, et pas le label des pods ?
   Parce que `spec.selector` d'un Deployment est **immuable** : le modifier
-  ferait echouer `helm upgrade` avec `field is immutable`, et on n'observerait
-  pas la panne recherchee. C'est un piege classique : pour renommer un label de
-  pods, il faut supprimer puis recreer le Deployment (voire
+  ferait échouer `helm upgrade` avec `field is immutable`, et on n'observerait
+  pas la panne recherchée. C'est un piège classique : pour renommer un label de
+  pods, il faut supprimer puis recréer le Deployment (voire
   `kubectl delete deploy --cascade=orphan`).
-* Commande de reflexe : `kubectl get endpoints <svc>` avant toute autre chose.
+* Commande de réflexe : `kubectl get endpoints <svc>` avant toute autre chose.
 
 ---
 
-*Retour a l'etat sain : `diff -ru ../00-initial ../06` montre exactement
-ce qui a ete modifie.*
+*Retour à l'état sain : `diff -ru ../00-initial ../06` montre exactement
+ce qui a été modifié.*

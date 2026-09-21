@@ -1,14 +1,14 @@
-# Corrige - exercice 4 : Des pods qui restent en Pending
+# Corrigé - exercice 4 : Des pods qui restent en Pending
 
 | | |
 |---|---|
-| **Panne** | `frontend.resources.requests.memory` passe a `64Gi` |
-| **Fichier(s) modifie(s)** | `values.yaml` |
-| **Symptome attendu** | nouveaux pods frontend en `Pending`, jamais planifies |
+| **Panne** | `frontend.resources.requests.memory` passé à `64Gi` |
+| **Fichier(s) modifié(s)** | `values.yaml` |
+| **Symptôme attendu** | nouveaux pods frontend en `Pending`, jamais planifiés |
 
-> A ne pas distribuer aux etudiants avant la fin de l'exercice.
+> À ne pas distribuer aux étudiants avant la fin de l'exercice.
 
-## La panne injectee
+## La panne injectée
 
 `values.yaml`, tier frontend :
 
@@ -19,7 +19,7 @@
 +      memory: "64Gi"
 ```
 
-## Demarche de diagnostic
+## Démarche de diagnostic
 
 ```bash
 kubectl -n <ns> get pods -l tier=frontend
@@ -31,8 +31,8 @@ kubectl -n <ns> describe pod -l tier=frontend | tail -5
 ```
 
 C'est le **scheduler** qui bloque : il additionne les `requests` de tous les
-pods deja places sur un noeud et refuse d'en ajouter un qui ne tient pas. La
-memoire reellement utilisee n'entre pas en ligne de compte, seules les
+pods déjà placés sur un noeud et refuse d'en ajouter un qui ne tient pas. La
+mémoire réellement utilisée n'entre pas en ligne de compte, seules les
 `requests` comptent.
 
 ```bash
@@ -42,19 +42,19 @@ kubectl describe node <noeud> | grep -A8 'Allocated resources'
 
 ## Correction
 
-Retablir `memory: "32M"` dans les `requests` du frontend, puis `helm upgrade`.
+Rétablir `memory: "32M"` dans les `requests` du frontend, puis `helm upgrade`.
 
-## Rappel theorique
+## Rappel théorique
 
-* `requests` = ce qui est **reserve** : sert au placement et au calcul de la
-  classe de QoS. `limits` = le **plafond** : sert a l'eviction (memoire) ou au
+* `requests` = ce qui est **réservé** : sert au placement et au calcul de la
+  classe de QoS. `limits` = le **plafond** : sert à l'éviction (mémoire) ou au
   throttling (CPU).
-* `Pending` = probleme de placement (ressources, `nodeSelector`, taints,
-  affinites, volume non disponible). Le detail est toujours dans les evenements.
-* `requests` trop hautes : gachis de capacite et pods non planifiables.
-  `requests` trop basses : surreservation et evictions sous charge.
+* `Pending` = problème de placement (ressources, `nodeSelector`, taints,
+  affinités, volume non disponible). Le détail est toujours dans les événements.
+* `requests` trop hautes : gâchis de capacité et pods non planifiables.
+  `requests` trop basses : surréservation et évictions sous charge.
 
 ---
 
-*Retour a l'etat sain : `diff -ru ../00-initial ../04` montre exactement
-ce qui a ete modifie.*
+*Retour à l'état sain : `diff -ru ../00-initial ../04` montre exactement
+ce qui a été modifié.*

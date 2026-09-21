@@ -1,14 +1,14 @@
-# Corrige - exercice 9 : Plus aucun rapport depuis ce matin
+# Corrigé - exercice 9 : Plus aucun rapport depuis ce matin
 
 | | |
 |---|---|
-| **Panne** | `reportCronJob.indexName` passe a `Formation-Reports` : Elasticsearch refuse les majuscules |
-| **Fichier(s) modifie(s)** | `values.yaml` |
-| **Symptome attendu** | tous les Jobs du CronJob en echec, plus aucun rapport ecrit |
+| **Panne** | `reportCronJob.indexName` passé à `Formation-Reports` : Elasticsearch refuse les majuscules |
+| **Fichier(s) modifié(s)** | `values.yaml` |
+| **Symptôme attendu** | tous les Jobs du CronJob en échec, plus aucun rapport écrit |
 
-> A ne pas distribuer aux etudiants avant la fin de l'exercice.
+> À ne pas distribuer aux étudiants avant la fin de l'exercice.
 
-## La panne injectee
+## La panne injectée
 
 `values.yaml` :
 
@@ -19,7 +19,7 @@
 
 Elasticsearch **refuse les noms d'index contenant des majuscules**.
 
-## Demarche de diagnostic
+## Démarche de diagnostic
 
 ```bash
 kubectl -n <ns> get cronjob,jobs -l tier=report
@@ -32,7 +32,7 @@ kubectl -n <ns> logs -l tier=report --tail=-1 | tail -15
 # curl: (22) The requested URL returned error: 400
 ```
 
-Pour le detail, on rejoue la requete a la main :
+Pour le détail, on rejoue la requête à la main :
 
 ```bash
 kubectl -n <ns> run curl-test --rm -it --restart=Never --image=curlimages/curl:8.11.1 \
@@ -41,35 +41,35 @@ kubectl -n <ns> run curl-test --rm -it --restart=Never --image=curlimages/curl:8
 #   "reason":"Invalid index name [Formation-Reports], must be lowercase"},"status":400}
 ```
 
-Le rapport n'est pas ecrit parce que le script s'arrete a la creation de
-l'index (`set -e` + `curl --fail`), donc **avant** l'ecriture sur le volume.
+Le rapport n'est pas écrit parce que le script s'arrête à la création de
+l'index (`set -e` + `curl --fail`), donc **avant** l'écriture sur le volume.
 
-L'historique conserve est pilote par le chart :
+L'historique conservé est piloté par le chart :
 `successfulJobsHistoryLimit: 3` et `failedJobsHistoryLimit: 3`. C'est ce qui
-permet de voir cote a cote les derniers Jobs reussis et les derniers echoues.
-Les pods des Jobs termines ne sont pas supprimes : leurs logs restent lisibles.
+permet de voir côté à côté les derniers Jobs réussis et les derniers échoués.
+Les pods des Jobs terminés ne sont pas supprimés : leurs logs restent lisibles.
 
 ## Correction
 
-Retablir `indexName: "formation-reports"`, puis `helm upgrade`. Un CronJob
-n'est pas "redemarre" : la prochaine occurrence, a la minute suivante, utilisera
-la nouvelle definition. Pour ne pas attendre :
+Rétablir `indexName: "formation-reports"`, puis `helm upgrade`. Un CronJob
+n'est pas "redémarre" : la prochaine occurrence, à la minute suivante, utilisera
+la nouvelle définition. Pour ne pas attendre :
 
 ```bash
 kubectl -n <ns> create job --from=cronjob/cronjob-report verif-1
 kubectl -n <ns> logs job/verif-1
 ```
 
-## Rappel theorique
+## Rappel théorique
 
-* Hierarchie : CronJob -> Job -> Pod. Un Job en echec ne "reessaie" que dans la
+* Hiérarchie : CronJob -> Job -> Pod. Un Job en échec ne "réessaie" que dans la
   limite de son `backoffLimit` (0 ici : c'est le cron qui rejoue chaque minute).
-* `concurrencyPolicy: Forbid` empeche deux executions simultanees ;
+* `concurrencyPolicy: Forbid` empêche deux exécutions simultanées ;
   `startingDeadlineSeconds` abandonne une occurrence trop en retard.
-* Regles de nommage Elasticsearch : minuscules, pas de `\ / * ? " < > |`,
-  pas de nom commencant par `-`, `_` ou `+`.
+* Règles de nommage Elasticsearch : minuscules, pas de `\ / * ? " < > |`,
+  pas de nom commençant par `-`, `_` ou `+`.
 
 ---
 
-*Retour a l'etat sain : `diff -ru ../00-initial ../09` montre exactement
-ce qui a ete modifie.*
+*Retour à l'état sain : `diff -ru ../00-initial ../09` montre exactement
+ce qui a été modifié.*

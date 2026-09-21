@@ -1,14 +1,14 @@
-# Corrige - exercice 8 : La configuration a change, l'application non
+# Corrigé - exercice 8 : La configuration a changé, l'application non
 
 | | |
 |---|---|
-| **Panne** | aucune panne technique : `appId` modifie, mais aucune annotation `checksum/` ne couvre `configmap-myapp` |
-| **Fichier(s) modifie(s)** | `values.yaml` |
-| **Symptome attendu** | le ConfigMap contient la nouvelle valeur, les pods l'ancienne |
+| **Panne** | aucune panne technique : `appId` modifié, mais aucune annotation `checksum/` ne couvre `configmap-myapp` |
+| **Fichier(s) modifié(s)** | `values.yaml` |
+| **Symptôme attendu** | le ConfigMap contient la nouvelle valeur, les pods l'ancienne |
 
-> A ne pas distribuer aux etudiants avant la fin de l'exercice.
+> À ne pas distribuer aux étudiants avant la fin de l'exercice.
 
-## La panne injectee
+## La panne injectée
 
 `values.yaml` :
 
@@ -17,14 +17,14 @@
 +appId: 99
 ```
 
-Il n'y a en realite aucun bug : c'est le **comportement normal** de Kubernetes,
-et c'est un des pieges les plus frequents en production.
+Il n'y a en réalité aucun bug : c'est le **comportement normal** de Kubernetes,
+et c'est un des pièges les plus fréquents en production.
 
-## Demarche de diagnostic
+## Démarche de diagnostic
 
 ```bash
 kubectl -n <ns> get cm configmap-myapp -o jsonpath='{.data.APPID}{"\n"}'
-# 99   <- le ConfigMap a bien ete mis a jour
+# 99   <- le ConfigMap a bien été mis à jour
 
 kubectl -n <ns> exec deploy/deployment-frontend -- env | grep APPID
 # APPID=42   <- le pod, lui, n'a pas bouge
@@ -33,23 +33,23 @@ kubectl -n <ns> get pods -l tier=frontend
 # AGE : 47m  -> aucun redemarrage pendant le helm upgrade
 ```
 
-Les variables d'environnement sont injectees **au demarrage du conteneur** et
+Les variables d'environnement sont injectées **au démarrage du conteneur** et
 ne changent plus jamais ensuite. Modifier le ConfigMap ne touche pas les
-processus deja lances.
+processus déjà lancés.
 
-(A noter : un ConfigMap monte en **volume** est, lui, mis a jour dans le pod au
+(À noter : un ConfigMap monté en **volume** est, lui, mis à jour dans le pod au
 bout d'une minute environ. Mais nginx ne relit pas sa configuration tout seul
 pour autant : il faudrait lui envoyer un signal de rechargement.)
 
 ## Correction
 
-Correction immediate :
+Correction immédiate :
 
 ```bash
 kubectl -n <ns> rollout restart deploy/deployment-frontend deploy/deployment-backend
 ```
 
-Correction durable : ajouter au Deployment l'annotation qui existe deja pour
+Correction durable : ajouter au Deployment l'annotation qui existe déjà pour
 les deux autres ConfigMap, dans `templates/deployment-frontend.yml` et
 `templates/deployment-backend.yml` :
 
@@ -59,20 +59,20 @@ les deux autres ConfigMap, dans `templates/deployment-frontend.yml` et
         checksum/configmap-myapp: {{ include (print $.Template.BasePath "/configmap-myapp.yaml") . | sha256sum }}
 ```
 
-L'empreinte du fichier change des que son contenu change ; l'annotation du pod
-template change donc aussi, et Helm declenche un roulement des pods.
+L'empreinte du fichier change dès que son contenu change ; l'annotation du pod
+template change donc aussi, et Helm déclenche un roulement des pods.
 
-## Rappel theorique
+## Rappel théorique
 
-* `envFrom`/`env` : fige au demarrage du conteneur.
-* ConfigMap monte en volume : le contenu du fichier est rafraichi (delai lie au
+* `envFrom`/`env` : figé au démarrage du conteneur.
+* ConfigMap monté en volume : le contenu du fichier est rafraîchi (délai lié au
   `sync-period` de kubelet, ~1 min), mais l'application doit relire le fichier.
-* `kubectl rollout restart` cree une nouvelle revision en modifiant une
+* `kubectl rollout restart` crée une nouvelle révision en modifiant une
   annotation du pod template : c'est un roulement propre, pas une suppression
   de pods.
-* Un Secret suit exactement les memes regles.
+* Un Secret suit exactement les mêmes règles.
 
 ---
 
-*Retour a l'etat sain : `diff -ru ../00-initial ../08` montre exactement
-ce qui a ete modifie.*
+*Retour à l'état sain : `diff -ru ../00-initial ../08` montre exactement
+ce qui a été modifié.*

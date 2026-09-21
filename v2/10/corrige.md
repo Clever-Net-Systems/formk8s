@@ -1,16 +1,16 @@
-# Corrige - exercice 10 : Un Job qui ne cree aucun pod
+# Corrigé - exercice 10 : Un Job qui ne crée aucun pod
 
 | | |
 |---|---|
-| **Panne** | Job `job-purge` ajoute, non conforme au profil `restricted` (root, escalade autorisee, seccomp et capabilities absents) |
-| **Fichier(s) modifie(s)** | `templates/job-purge.yml` (ajoute) |
-| **Symptome attendu** | le Job existe, aucun pod n'est jamais cree |
+| **Panne** | Job `job-purge` ajouté, non conforme au profil `restricted` (root, escalade autorisée, seccomp et capabilities absents) |
+| **Fichier(s) modifié(s)** | `templates/job-purge.yml` (ajouté) |
+| **Symptôme attendu** | le Job existe, aucun pod n'est jamais crée |
 
-> A ne pas distribuer aux etudiants avant la fin de l'exercice.
+> À ne pas distribuer aux étudiants avant la fin de l'exercice.
 
-## La panne injectee
+## La panne injectée
 
-Ajout de `templates/job-purge.yml`, dont le pod viole le profil `restricted` a
+Ajout de `templates/job-purge.yml`, dont le pod viole le profil `restricted` à
 quatre titres :
 
 ```yaml
@@ -23,10 +23,10 @@ quatre titres :
             # capabilities.drop: ["ALL"] absent
 ```
 
-## Demarche de diagnostic
+## Démarche de diagnostic
 
-Le point cle : **l'admission refuse la creation du pod, pas celle du Job**.
-Le Job est donc bien cree, et c'est son controleur qui echoue en boucle.
+Le point clé : **l'admission refuse la création du pod, pas celle du Job**.
+Le Job est donc bien crée, et c'est son contrôleur qui échoue en boucle.
 
 ```bash
 kubectl -n <ns> get jobs
@@ -43,8 +43,8 @@ kubectl -n <ns> describe job job-purge | tail -12
 #     runAsNonRoot != true, runAsUser=0, seccompProfile
 ```
 
-Le message donne la liste complete de ce qui manque. On peut aussi le retrouver
-dans les evenements du namespace :
+Le message donne la liste complète de ce qui manque. On peut aussi le retrouver
+dans les événements du namespace :
 
 ```bash
 kubectl -n <ns> get events --sort-by=.lastTimestamp | grep -i forbidden | tail -3
@@ -52,7 +52,7 @@ kubectl -n <ns> get events --sort-by=.lastTimestamp | grep -i forbidden | tail -
 
 ## Correction
 
-Aligner le Job sur ce que fait deja le CronJob du chart, dans
+Aligner le Job sur ce que fait déjà le CronJob du chart, dans
 `templates/job-purge.yml` :
 
 ```yaml
@@ -72,14 +72,14 @@ Aligner le Job sur ce que fait deja le CronJob du chart, dans
                 - ALL
 ```
 
-Abaisser le namespace en `baseline` ferait disparaitre le message, mais
-reviendrait a supprimer le garde-fou pour toute l'application : la regle est de
+Abaisser le namespace en `baseline` ferait disparaître le message, mais
+reviendrait à supprimer le garde-fou pour toute l'application : la règle est de
 corriger la charge de travail, pas la politique.
 
-## Rappel theorique
+## Rappel théorique
 
-* Pod Security Admission travaille **a la creation du pod**. Pour tout objet qui
-  cree des pods (Deployment, Job, CronJob, StatefulSet), le message d'erreur se
+* Pod Security Admission travaille **à la création du pod**. Pour tout objet qui
+  crée des pods (Deployment, Job, CronJob, StatefulSet), le message d'erreur se
   trouve sur le ReplicaSet / le Job, jamais sur un pod qui n'existe pas.
 * Trois modes, cumulables par namespace : `enforce` (refuse), `audit` (journal),
   `warn` (avertissement dans la sortie kubectl).
@@ -91,5 +91,5 @@ corriger la charge de travail, pas la politique.
 
 ---
 
-*Retour a l'etat sain : `diff -ru ../00-initial ../10` montre exactement
-ce qui a ete modifie.*
+*Retour à l'état sain : `diff -ru ../00-initial ../10` montre exactement
+ce qui a été modifié.*

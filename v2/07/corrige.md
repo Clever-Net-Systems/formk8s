@@ -1,14 +1,14 @@
-# Corrige - exercice 7 : Une 503 qui n'apparait que dans les logs
+# Corrigé - exercice 7 : Une 503 qui n'apparaît que dans les logs
 
 | | |
 |---|---|
 | **Panne** | `proxy_pass` du frontend vers le port `8080` (port du conteneur) au lieu de `80` (port du Service) |
-| **Fichier(s) modifie(s)** | `templates/configmap-frontend.yaml` |
-| **Symptome attendu** | 503 sur `/api/` uniquement, backend sain par ailleurs |
+| **Fichier(s) modifié(s)** | `templates/configmap-frontend.yaml` |
+| **Symptôme attendu** | 503 sur `/api/` uniquement, backend sain par ailleurs |
 
-> A ne pas distribuer aux etudiants avant la fin de l'exercice.
+> À ne pas distribuer aux étudiants avant la fin de l'exercice.
 
-## La panne injectee
+## La panne injectée
 
 `templates/configmap-frontend.yaml`, directive `proxy_pass` :
 
@@ -18,9 +18,9 @@
 ```
 
 8080 est le port du **conteneur** (`targetPort`), pas celui du **Service**
-(`port: 80`). Le Service n'ecoute pas sur 8080 : la connexion est refusee.
+(`port: 80`). Le Service n'écoute pas sur 8080 : la connexion est refusée.
 
-## Demarche de diagnostic
+## Démarche de diagnostic
 
 ```bash
 kubectl -n <ns> logs -l tier=frontend --tail=20
@@ -29,7 +29,7 @@ kubectl -n <ns> logs -l tier=frontend --tail=20
 ```
 
 Tout est dans cette ligne : l'IP est bien celle du Service (ClusterIP), mais le
-port est faux. Verification :
+port est faux. Vérification :
 
 ```bash
 kubectl -n <ns> get svc service-backend-clusterip
@@ -42,28 +42,28 @@ lui, doit taper sur **80**.
 
 ## Correction
 
-Retablir `:{{ .Values.backend.service.port }}/` (soit 80) dans `proxy_pass`,
-puis `helm upgrade`. Les pods frontend redemarrent grace au `checksum/`.
+Rétablir `:{{ .Values.backend.service.port }}/` (soit 80) dans `proxy_pass`,
+puis `helm upgrade`. Les pods frontend redémarrent grâce au `checksum/`.
 
-## Rappel theorique
+## Rappel théorique
 
 * `port` = le port du Service (ce que les clients appellent).
-  `targetPort` = le port du conteneur (ou le nom du port declare dans le pod,
+  `targetPort` = le port du conteneur (ou le nom du port déclaré dans le pod,
   `http` ici). `nodePort` = le port ouvert sur chaque noeud.
-* Le Service du backend est de type `ClusterIP` : il n'existe qu'a l'interieur
+* Le Service du backend est de type `ClusterIP` : il n'existe qu'à l'intérieur
   du cluster et n'est joignable que par son nom DNS. C'est le cas le plus
   courant pour un service interne. Le Service du frontend, lui, est un
   `NodePort` : un **sur-ensemble** du ClusterIP, avec en plus une porte ouverte
   sur chaque noeud pour les clients externes. Dans les deux cas, un client
   interne passe par le ClusterIP : c'est visible dans le message d'erreur
   ci-dessus, l'adresse est un `10.x`, pas une IP de noeud.
-* Nommer les ports du conteneur et referencer ce nom dans `targetPort` evite ce
-  genre d'erreur du cote Service... mais pas dans une configuration applicative,
-  qui ne connait que le port du Service.
-* Reflexe : une 502/503 rendue par un reverse-proxy raconte toujours son echec
+* Nommer les ports du conteneur et référencer ce nom dans `targetPort` évite ce
+  genre d'erreur du côté Service... mais pas dans une configuration applicative,
+  qui ne connaît que le port du Service.
+* Réflexe : une 502/503 rendue par un reverse-proxy raconte toujours son échec
   dans les logs du proxy, pas dans ceux du service cible.
 
 ---
 
-*Retour a l'etat sain : `diff -ru ../00-initial ../07` montre exactement
-ce qui a ete modifie.*
+*Retour à l'état sain : `diff -ru ../00-initial ../07` montre exactement
+ce qui a été modifié.*
