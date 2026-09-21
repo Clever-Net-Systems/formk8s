@@ -21,15 +21,15 @@ helm install monchart . -n <prenom>-tshoot
 ## Contexte
 
 Nouvelle installation de la plateforme sur un environnement où le stockage a
-été dimensionné au plus juste. Tout démarre correctement : les pods sont verts,
-le cluster Elasticsearch est `green`... mais le CronJob échoue à chaque
-exécution.
+été dimensionné au plus juste. Tout démarre correctement, les pods sont tous
+`Running`, Elasticsearch répond... mais le CronJob échoue à chaque exécution.
 
 ## Ce que vous devez constater
 
-* `statefulset-elasticsearch-0` est `Running 1/1`
-* `curl http://service-elasticsearch:9200/_cluster/health` renvoie `green`
-* les Jobs `cronjob-report` échouent tous, et le rapport n'est plus mis à jour
+* `statefulset-elasticsearch-0` est `Running 1/1` et répond sur le port 9200
+* les Jobs `cronjob-report` échouent tous
+* le rapport, lui, continue d'être écrit chaque minute sur le volume partagé :
+  ce n'est donc ni le volume, ni le backend
 
 ## Votre mission
 
@@ -42,8 +42,8 @@ Lisez le message d'erreur de `helm upgrade` avant de vous lancer.
 ## Questions pour vous guider
 
 * Que disent les logs d'un Job en échec ? Cherchez le mot `block`.
-* Un cluster `green` signifie que les shards sont alloués. Cela garantit-il que
-  l'on peut y écrire ?
+* Elasticsearch se déclare en bonne santé et répond aux lectures. Est-ce que
+  cela garantit que l'on peut y écrire ?
 * `kubectl exec statefulset-elasticsearch-0 -- df -h /usr/share/elasticsearch/data`
 * Quels seuils sont configurés dans `configmap-elasticsearch` ?
   Comparez-les à l'espace libre réel.
@@ -54,9 +54,8 @@ Lisez le message d'erreur de `helm upgrade` avant de vous lancer.
 
 ## Critère de réussite
 
-Un nouveau `report-*.txt` est écrit, les Jobs repassent en `Complete`, le PVC
-d'Elasticsearch fait la nouvelle taille, et `helm upgrade` fonctionne à nouveau
-sans erreur.
+Les Jobs `cronjob-report` repassent en `Complete`, le PVC d'Elasticsearch fait
+la nouvelle taille, et `helm upgrade` fonctionne à nouveau sans erreur.
 
 ---
 

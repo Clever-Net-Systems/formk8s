@@ -23,7 +23,7 @@ morts s'accumulent dans le namespace.
 
 * de nouveaux pods frontend apparaissent, puis passent en `Evicted` au bout de
   quelques dizaines de secondes
-* la liste des pods s'allonge à chaque minute
+* la liste des pods s'allonge au fil des minutes
 * le site continue de répondre (les anciens pods tiennent bon)
 
 ## Votre mission

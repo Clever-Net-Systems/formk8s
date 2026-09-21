@@ -22,7 +22,9 @@ Pour "faire de la place sur le cluster", la limite mémoire d'Elasticsearch a
 
 * `statefulset-elasticsearch-0` redémarre en boucle
 * ses logs sont vides, ou s'arrêtent en plein milieu du démarrage de la JVM
-* les jobs `cronjob-report` commencent à échouer
+* les Jobs `cronjob-report` se terminent quand même en `Complete`, mais leurs
+  rapports affichent `cluster health: indisponible` et la pastille
+  Elasticsearch du tableau de bord passe au rouge
 
 ## Votre mission
 

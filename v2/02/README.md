@@ -16,14 +16,16 @@ helm upgrade --install monchart . -n <prenom>-tshoot
 ## Contexte
 
 Une modification de la configuration nginx du tier backend a été livrée.
-Depuis, plus rien ne répond du côté backend, et la page d'accueil du frontend
-affiche `backend : injoignable`.
+`helm upgrade` s'est terminé sans erreur, mais le déploiement ne se termine
+jamais.
 
 ## Ce que vous devez constater
 
-* les pods backend sont en `CrashLoopBackOff`, avec un compteur de redémarrages
-  qui augmente
-* le tier frontend, lui, va bien
+* `kubectl rollout status deploy/deployment-backend` ne rend pas la main
+* un nouveau pod backend est en `CrashLoopBackOff`, avec un compteur de
+  redémarrages qui augmente
+* les anciens pods backend sont toujours `Running` et `Ready` : le site
+  continue de répondre normalement
 
 ## Votre mission
 
@@ -36,12 +38,14 @@ Trouver ce qui empêche le conteneur de démarrer, et corriger le chart.
 * Quelle est la différence entre `kubectl logs <pod>` et
   `kubectl logs <pod> --previous` ?
 * Quel objet du chart a été modifié par la livraison ? (`helm diff` ou
-  `git diff` avec le dossier `initial`)
+  `diff -ru` avec le dossier `00-initial`)
+* Pourquoi le site répond-il encore, alors que la configuration livrée est
+  cassée ? Que se passerait-il si un ancien pod redémarrait maintenant ?
 
 ## Critère de réussite
 
-Les pods backend sont `Running 1/1` sans redémarrages, et la page du frontend
-repasse au vert.
+Tous les pods backend sont `Running 1/1` sans redémarrages, et
+`kubectl rollout status deploy/deployment-backend` rend la main.
 
 ---
 

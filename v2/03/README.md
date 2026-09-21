@@ -15,8 +15,9 @@ helm upgrade --install monchart . -n <prenom>-tshoot
 
 ## Contexte
 
-Les utilisateurs signalent des coupures brèves et régulières sur l'API. Les
-pods backend semblent pourtant fonctionner : ils répondent quand on les teste.
+L'exploitation a remarqué que les pods du tier backend redémarrent tout seuls,
+plusieurs fois par heure. L'application, elle, répond correctement : le service
+n'a jamais été interrompu.
 
 ## Ce que vous devez constater
 

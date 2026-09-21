@@ -30,6 +30,10 @@ kubectl -n <ns> logs -l tier=report --tail=-1 | tail -15
 #          Pistes : volume plein (voir ci-dessus), ou bien : ...
 ```
 
+Selon l'endroit exact où l'écriture échoue, le script affiche soit ce message
+(le pré-vol), soit `ERREUR : écriture de /data/report-....txt impossible` : dans
+les deux cas il termine par la sortie de `df`, et c'est elle qui tranche.
+
 Les droits sont bons (`drwxrwsr-x`, groupe 2000) : c'est bien l'espace qui
 manque. Confirmation côté backend :
 

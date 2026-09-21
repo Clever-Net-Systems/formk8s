@@ -22,7 +22,7 @@
 ```
 
 1 Ki, c'est moins qu'un seul bloc de système de fichiers : le conteneur dépasse
-la limite des qu'il écrit quoi que ce soit (nginx crée son fichier de PID et
+la limite dès qu'il écrit quoi que ce soit (nginx crée son fichier de PID et
 ses répertoires de cache au démarrage).
 
 ## Démarche de diagnostic

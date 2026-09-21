@@ -21,14 +21,14 @@ helm install monchart . -n <prenom>-tshoot
 ## Contexte
 
 L'équipe data a livré un import de données (`job-import-dump`) qui dépose un
-fichier sur le volume partagé. Depuis, le CronJob de rapport ne produit plus
-rien et le tableau de bord affiche `rapport du CronJob : absent`.
+fichier sur le volume partagé. Depuis, le CronJob de rapport ne produit rien
+et le tableau de bord affiche `rapport du CronJob : absent`.
 
 ## Ce que vous devez constater
 
 * `job-import-dump` s'est terminé normalement
 * les Jobs `cronjob-report` échouent tous
-* `/reports/` ne contient plus qu'un gros fichier (`kubectl port-forward
+* `/reports/` ne contient qu'un gros fichier (`kubectl port-forward
   svc/service-backend-clusterip 8080:80` puis `http://localhost:8080/reports/`)
 
 ## Votre mission

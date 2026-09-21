@@ -4,7 +4,7 @@
 |---|---|
 | **Panne** | volume d'Elasticsearch réduit à `128Mi`, sous le seuil `flood_stage` de 128 mb |
 | **Fichier(s) modifié(s)** | `values.yaml` |
-| **Symptôme attendu** | cluster `green` mais index en lecture seule, erreurs 429 dans les Jobs |
+| **Symptôme attendu** | Elasticsearch répond mais refuse les écritures (429) : les Jobs échouent, le rapport reste écrit |
 
 > À ne pas distribuer aux étudiants avant la fin de l'exercice.
 
@@ -50,10 +50,15 @@ kubectl -n <ns> exec statefulset-elasticsearch-0 -- df -h /usr/share/elasticsear
 # /dev/...    122M   14M   96M  13% /usr/share/elasticsearch/data
 ```
 
-Le point important : **le cluster est `green`**. Le vert dit que tous les
-shards sont alloués, pas que l'on peut écrire. Un blocage
-`read_only_allow_delete`
-n'apparaît pas dans `_cluster/health`, mais dans les erreurs 429 des clients.
+Le point important : **Elasticsearch répond et se déclare en bonne santé**. Le
+statut du cluster (`green`, ou `red` si un shard n'a pas pu être alloué faute
+de place) ne dit rien sur la possibilité d'écrire : un blocage
+`read_only_allow_delete` n'apparaît pas dans `_cluster/health`, seulement dans
+les erreurs 429 renvoyées aux clients.
+
+À noter aussi : le job écrit son rapport **avant** d'indexer son document dans
+Elasticsearch. Le fichier `latest.txt` reste donc à jour alors que le Job sort
+en erreur — c'est ce qui disculpe le volume partagé et le tier backend.
 
 ## Correction
 

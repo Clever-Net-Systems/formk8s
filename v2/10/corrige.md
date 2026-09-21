@@ -4,7 +4,7 @@
 |---|---|
 | **Panne** | Job `job-purge` ajouté, non conforme au profil `restricted` (root, escalade autorisée, seccomp et capabilities absents) |
 | **Fichier(s) modifié(s)** | `templates/job-purge.yml` (ajouté) |
-| **Symptôme attendu** | le Job existe, aucun pod n'est jamais crée |
+| **Symptôme attendu** | le Job existe, aucun pod n'est jamais créé |
 
 > À ne pas distribuer aux étudiants avant la fin de l'exercice.
 
@@ -26,7 +26,7 @@ quatre titres :
 ## Démarche de diagnostic
 
 Le point clé : **l'admission refuse la création du pod, pas celle du Job**.
-Le Job est donc bien crée, et c'est son contrôleur qui échoue en boucle.
+Le Job est donc bien créé, et c'est son contrôleur qui échoue en boucle.
 
 ```bash
 kubectl -n <ns> get jobs
