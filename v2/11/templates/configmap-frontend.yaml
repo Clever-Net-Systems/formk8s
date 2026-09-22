@@ -178,7 +178,7 @@ data:
           setState("api", true, "backend : joignable (pod " + pod + ")");
         } else if (r.status === 503) {
           // 503 = le proxy nginx n'a obtenu aucune reponse du Service backend
-          setState("api", false, "backend : injoignable (503, aucun endpoint dans le Service backend ?)");
+          setState("api", false, "backend : injoignable (503 ?)");
         } else {
           setState("api", false, "backend : erreur HTTP " + r.status);
         }

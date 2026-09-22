@@ -34,16 +34,6 @@ data:
     WTEST="${REPORT_DIR}/.write-test.$$"
     if ! mkdir "${WTEST}" 2>/dev/null; then
       echo "ERREUR : impossible d'ecrire dans ${REPORT_DIR}."
-      echo "         UID/GID du conteneur : $(id -u):$(id -g), groupes : $(id -G)"
-      echo "         Droits du point de montage :"
-      ls -ld "${REPORT_DIR}" || true
-      echo "         Espace disponible :"
-      df -h "${REPORT_DIR}" || true
-      echo "         Pistes : volume plein (voir ci-dessus), ou bien :"
-      echo "         - fsGroup du pod absent, ou different de celui du tier backend ;"
-      echo "         - driver CSI qui ignore fsGroup sur un volume ReadWriteMany :"
-      echo "           kubectl get csidriver -o custom-columns=NAME:.metadata.name,FSGROUP:.spec.fsGroupPolicy"
-      echo "           (fsGroupPolicy=ReadWriteOnceWithFSType => fsGroup ignore sur un PVC RWX)"
       exit 1
     fi
     rmdir "${WTEST}" || true
